@@ -1,6 +1,5 @@
 .*project*
 .settings
-*.ld
 # Prerequisites
 *.d
 
