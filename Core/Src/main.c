@@ -24,6 +24,7 @@
 
 #include "stdio.h"
 #include "string.h"
+#include "lsm303dlhc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,10 +49,6 @@ typedef struct
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define LSM303DLHC_I2C
-#define L3GD20_I2C
-// #define LIS3MDL_I2C // this def isn't needed because the mag only has i2c
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,6 +57,8 @@ typedef struct
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 I2S_HandleTypeDef hi2s2;
 I2S_HandleTypeDef hi2s3;
 
@@ -77,6 +76,7 @@ static void MX_I2S2_Init(void);
 static void MX_I2S3_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USB_OTG_FS_USB_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -94,9 +94,14 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-void my_init(void)
+void hexprint(const char* start, const uint8_t* buf, int len)
 {
-	printf("Init\n");
+	printf("%s0x", start);
+	for (int i = 0; i < len; i++)
+	{
+		printf("%.2hX", buf[i]);
+	}
+	printf("\n");
 }
 
 
@@ -105,47 +110,90 @@ void toggle_led(led_t led)
 	HAL_GPIO_TogglePin(GPIOD, led);
 }
 
-
-// SENSOR GENERAL I/O
-// Note: LSM303 is LSM303DLHC
-// L3GD20 not to be confused with L3GD20H
-
-void lsm303_read(void* handle, uint8_t reg,  uint8_t *buf, uint16_t len)
+void print_hal_status(HAL_StatusTypeDef status)
 {
-
+	switch (status)
+	{
+		case HAL_OK:
+			printf("#GRN#HAL OK\n");
+			break;
+		case HAL_ERROR:
+			printf("#RED#HAL ERROR\n");
+			break;
+		case HAL_TIMEOUT:
+			printf("#ORG#HAL TIMEOUT\n");
+			break;
+		case HAL_BUSY:
+			printf("#ORG#HAL BUSY\n");
+			break;
+	}
 }
 
-void lsm303_write(void* handle, uint8_t reg, const uint8_t *buf, uint16_t len)
+void init(void)
 {
+	printf("\nInit\n");
 
+	uint8_t ctl_reg = 0b00100111;
+	HAL_StatusTypeDef status;
+
+	status = lsm303_write(&hi2c1, 0x20, &ctl_reg, 1);
+	print_hal_status(status);
+	ctl_reg = 0;
+
+	status = lsm303_read(&hi2c1, 0x20, &ctl_reg, 1);
+	print_hal_status(status);
+	if (status == HAL_OK)
+	{
+		printf("#GRN#CTRL_REG1_A set to 0x%x\n", ctl_reg);
+	}
+
+	uint8_t fs_reg = 0b01001000;
+	status = lsm303_write(&hi2c1, 0x23, &fs_reg, 1);
+	print_hal_status(status);
+	fs_reg = 0;
+	status = lsm303_read(&hi2c1, 0x23, &fs_reg, 1);
+	print_hal_status(status);
+
+	if (status == HAL_OK)
+	{
+		printf("#GRN#CTRL_REG3_A set to 0x%x\n", fs_reg);
+	}
 }
 
-void l3gd20_read(void* handle, uint8_t reg,  uint8_t *buf, uint16_t len)
+
+void loop(void)
 {
+	HAL_StatusTypeDef status;
+	uint8_t a_status = 0;
+	uint8_t accel[6];
 
+	status = lsm303_read(&hi2c1, 0x27, &a_status, 1);
+	if (status == HAL_OK)
+	{
+		printf("#GRN#STATUS_REG_A = 0x%x\n", a_status);
+		for (int i = 0; i < 6; i++)
+		{
+			status = lsm303_read(&hi2c1, 0x28 + i, accel + i, 1);
+			if (status != HAL_OK)
+			{
+				printf("Reading data registers: ");
+				print_hal_status(status);
+			}
+		} /**/
+		// status = HAL_I2C_Mem_Read(&hi2c1, 0x33, 0x28, 1, accel, 6, 1000);
+		// status = lsm303_read(&hi2c1, 0x28, accel, 6);
+		print_hal_status(status);
+		if (status == HAL_OK)
+		{
+			hexprint("Acceleration register contents: ", accel, 6);
+		}
+	}
+	else
+	{
+		printf("Reading status register: ");
+		print_hal_status(status);
+	}
 }
-
-void l3gd20_write(void* handle, uint8_t reg, const uint8_t *buf, uint16_t len)
-{
-
-}
-
-void lis3mdl_read(void* handle, uint8_t reg,  uint8_t *buf, uint16_t len)
-{
-
-}
-
-void lis3mdl_write(void* handle, uint8_t reg, const uint8_t *buf, uint16_t len)
-{
-
-}
-
-// SENSOR CONFIG
-
-
-// SENSOR SPECIFIC DATA
-
-
 /* USER CODE END 0 */
 
 /**
@@ -183,24 +231,25 @@ int main(void)
   MX_I2S3_Init();
   MX_SPI1_Init();
   MX_USB_OTG_FS_USB_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  my_init();
-  int loops_run = 0;
+  init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
+	  {
+		  loop();
+	  }
 	toggle_led(GREEN);
-	printf("Finished loop %d", ++loops_run);
-
-
-
-    HAL_Delay(500);
+    HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
@@ -268,6 +317,40 @@ void PeriphCommonClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 50;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -415,7 +498,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CS_I2C_SPI_GPIO_Port, CS_I2C_SPI_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -430,12 +513,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(DATA_Ready_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : CS_I2C_SPI_Pin */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
+  /*Configure GPIO pin : PE3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CS_I2C_SPI_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : INT1_Pin INT2_Pin MEMS_INT2_Pin */
   GPIO_InitStruct.Pin = INT1_Pin|INT2_Pin|MEMS_INT2_Pin;
@@ -449,6 +532,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(OTG_FS_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD4_Pin LD3_Pin LD5_Pin LD6_Pin
                            Audio_RST_Pin */
@@ -478,14 +567,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB6 PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
