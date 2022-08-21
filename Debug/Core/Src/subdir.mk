@@ -7,7 +7,6 @@
 C_SRCS += \
 ../Core/Src/i3g4250d_reg.c \
 ../Core/Src/lsm303agr_reg.c \
-../Core/Src/lsm303dlhc.c \
 ../Core/Src/main.c \
 ../Core/Src/stm32f4xx_hal_msp.c \
 ../Core/Src/stm32f4xx_it.c \
@@ -18,7 +17,6 @@ C_SRCS += \
 OBJS += \
 ./Core/Src/i3g4250d_reg.o \
 ./Core/Src/lsm303agr_reg.o \
-./Core/Src/lsm303dlhc.o \
 ./Core/Src/main.o \
 ./Core/Src/stm32f4xx_hal_msp.o \
 ./Core/Src/stm32f4xx_it.o \
@@ -29,7 +27,6 @@ OBJS += \
 C_DEPS += \
 ./Core/Src/i3g4250d_reg.d \
 ./Core/Src/lsm303agr_reg.d \
-./Core/Src/lsm303dlhc.d \
 ./Core/Src/main.d \
 ./Core/Src/stm32f4xx_hal_msp.d \
 ./Core/Src/stm32f4xx_it.d \
@@ -45,7 +42,7 @@ Core/Src/%.o Core/Src/%.su: ../Core/Src/%.c Core/Src/subdir.mk
 clean: clean-Core-2f-Src
 
 clean-Core-2f-Src:
-	-$(RM) ./Core/Src/i3g4250d_reg.d ./Core/Src/i3g4250d_reg.o ./Core/Src/i3g4250d_reg.su ./Core/Src/lsm303agr_reg.d ./Core/Src/lsm303agr_reg.o ./Core/Src/lsm303agr_reg.su ./Core/Src/lsm303dlhc.d ./Core/Src/lsm303dlhc.o ./Core/Src/lsm303dlhc.su ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
+	-$(RM) ./Core/Src/i3g4250d_reg.d ./Core/Src/i3g4250d_reg.o ./Core/Src/i3g4250d_reg.su ./Core/Src/lsm303agr_reg.d ./Core/Src/lsm303agr_reg.o ./Core/Src/lsm303agr_reg.su ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
 
 .PHONY: clean-Core-2f-Src
 

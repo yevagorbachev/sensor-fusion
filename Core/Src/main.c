@@ -24,7 +24,7 @@
 
 #include "stdio.h"
 #include "string.h"
-#include "lsm303dlhc.h"
+// #include "lsm303dlhc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,17 +38,16 @@ typedef enum
 	BLUE = LD6_Pin
 } led_t;
 
-typedef struct
-{
-	int (*task_func)(void*);
-	void* data;
-} task_t;
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define LSM303_WHOAMI 0x33U
 
+#define LSM303_WHOAMI_REG 0x0FU
+#define LSM303_CTRL1 0x20U
+#define LSM303_STATUS 0x27U
+#define LSM303_DATA 0x28U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -94,9 +93,8 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-void hexprint(const char* start, const uint8_t* buf, int len)
+void print_hex(const uint8_t* buf, int len)
 {
-	printf("%s0x", start);
 	for (int i = 0; i < len; i++)
 	{
 		printf("%.2hX", buf[i]);
@@ -110,88 +108,124 @@ void toggle_led(led_t led)
 	HAL_GPIO_TogglePin(GPIOD, led);
 }
 
-void print_hal_status(HAL_StatusTypeDef status)
+void set_led(led_t led)
+{
+	HAL_GPIO_WritePin(GPIOD, led, GPIO_PIN_SET);
+}
+
+void reset_led(led_t led)
+{
+	HAL_GPIO_WritePin(GPIOD, led, GPIO_PIN_RESET);
+}
+
+void print_hal(HAL_StatusTypeDef status)
 {
 	switch (status)
 	{
 		case HAL_OK:
-			printf("#GRN#HAL OK\n");
+			printf("HAL OK\n");
 			break;
 		case HAL_ERROR:
-			printf("#RED#HAL ERROR\n");
+			printf("HAL ERROR\n");
 			break;
 		case HAL_TIMEOUT:
-			printf("#ORG#HAL TIMEOUT\n");
+			printf("HAL TIMEOUT\n");
 			break;
 		case HAL_BUSY:
-			printf("#ORG#HAL BUSY\n");
+			printf("HAL BUSY\n");
 			break;
 	}
 }
 
-void init(void)
+HAL_StatusTypeDef i2c1_write(uint8_t reg, uint8_t* buf, uint16_t len)
 {
-	printf("\nInit\n");
-
-	uint8_t ctl_reg = 0b00100111;
 	HAL_StatusTypeDef status;
-
-	status = lsm303_write(&hi2c1, 0x20, &ctl_reg, 1);
-	print_hal_status(status);
-	ctl_reg = 0;
-
-	status = lsm303_read(&hi2c1, 0x20, &ctl_reg, 1);
-	print_hal_status(status);
-	if (status == HAL_OK)
+	status = HAL_I2C_Mem_Write(&hi2c1, LSM303_WHOAMI, reg, 1, buf, len, 100);
+	if (status != HAL_OK)
 	{
-		printf("#GRN#CTRL_REG1_A set to 0x%x\n", ctl_reg);
+		printf("Failed to write %d bytes starting at register 0x%.2x to LSM303: ", len, reg);
+		print_hal(status);
 	}
+	return status;
+}
 
-	uint8_t fs_reg = 0b01001000;
-	status = lsm303_write(&hi2c1, 0x23, &fs_reg, 1);
-	print_hal_status(status);
-	fs_reg = 0;
-	status = lsm303_read(&hi2c1, 0x23, &fs_reg, 1);
-	print_hal_status(status);
-
-	if (status == HAL_OK)
+HAL_StatusTypeDef i2c1_read(uint8_t reg, uint8_t* buf, uint16_t len)
+{
+	HAL_StatusTypeDef status;
+	status = HAL_I2C_Mem_Read(&hi2c1, LSM303_WHOAMI, reg, 1, buf, len, 100);
+	if (status != HAL_OK)
 	{
-		printf("#GRN#CTRL_REG3_A set to 0x%x\n", fs_reg);
+		printf("Failed to read %d bytes starting at register 0x%.2x from LSM303: ", len, reg);
+		print_hal(status);
 	}
+	return status;
+}
+
+typedef struct {
+	int x;
+	int y;
+	int z;
+} accel_t;
+
+accel_t convert_accel(const uint8_t* buf)
+{
+	// big endian: MSB first
+	accel_t ret;
+	ret.x = (buf[0] << 8) + buf[1];
+	ret.y = (buf[2] << 8) + buf[3];
+	ret.z = (buf[4] << 8) + buf[5];
+	return ret;
+}
+
+void print_accel(accel_t accel)
+{
+	printf("X: %d, Y: %d, Z: %d\n", accel.x, accel.y, accel.z);
+}
+
+#define COMMENT "Printing without length spec"
+
+void my_init(void)
+{
+	printf(COMMENT);
+	printf("\n");
+
+	uint8_t whoami = 0x00;
+	i2c1_read(LSM303_WHOAMI_REG, &whoami, 1);
+	printf("WHOAMI: 0x%.2x\n", whoami);
+
+	uint8_t ctrl_reg1 = 0b01010111;
+	i2c1_write(LSM303_CTRL1, &ctrl_reg1, 1);
+	ctrl_reg1 = 0;
+	i2c1_read(LSM303_CTRL1, &ctrl_reg1, 1);
+	printf("CTRL_REG1: 0x%.2x\n", ctrl_reg1);
+
+	uint8_t ctrl_reg4 = 0b01001000;
+	i2c1_write(LSM303_CTRL1 + 3, &ctrl_reg4, 1);
+	ctrl_reg4 = 0;
+	i2c1_read(LSM303_CTRL1 + 3, &ctrl_reg4, 1);
+	printf("CTRL_REG4: 0x%.2x\n", ctrl_reg4);
 }
 
 
-void loop(void)
+void loop(int loop_count)
 {
-	HAL_StatusTypeDef status;
-	uint8_t a_status = 0;
+	uint8_t status;
 	uint8_t accel[6];
+	accel_t acceleration_mg;
 
-	status = lsm303_read(&hi2c1, 0x27, &a_status, 1);
-	if (status == HAL_OK)
+	i2c1_read(LSM303_STATUS, &status, 1);
+	printf("Status register: 0x%.2x\n", status);
+	if (status & 0b00001000) // xyz ready
 	{
-		printf("#GRN#STATUS_REG_A = 0x%x\n", a_status);
 		for (int i = 0; i < 6; i++)
 		{
-			status = lsm303_read(&hi2c1, 0x28 + i, accel + i, 1);
-			if (status != HAL_OK)
-			{
-				printf("Reading data registers: ");
-				print_hal_status(status);
-			}
-		} /**/
-		// status = HAL_I2C_Mem_Read(&hi2c1, 0x33, 0x28, 1, accel, 6, 1000);
-		// status = lsm303_read(&hi2c1, 0x28, accel, 6);
-		print_hal_status(status);
-		if (status == HAL_OK)
-		{
-			hexprint("Acceleration register contents: ", accel, 6);
+			i2c1_read(LSM303_DATA + i, accel + i, 1);
 		}
-	}
-	else
-	{
-		printf("Reading status register: ");
-		print_hal_status(status);
+		// i2c1_read(LSM303_DATA, accel, 6);
+		printf("(%d) Acceleration register: ", loop_count);
+		print_hex(accel, 6);
+		acceleration_mg = convert_accel(accel);
+		print_accel(acceleration_mg);
 	}
 }
 /* USER CODE END 0 */
@@ -233,7 +267,8 @@ int main(void)
   MX_USB_OTG_FS_USB_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  init();
+  my_init();
+  int loop_counter = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -246,9 +281,15 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
 	  {
-		  loop();
+		  loop(++loop_counter);
+		  toggle_led(BLUE);
+		  set_led(ORANGE);
 	  }
-	toggle_led(GREEN);
+	  else
+	  {
+		  reset_led(BLUE);
+		  toggle_led(ORANGE);
+	  }
     HAL_Delay(100);
   }
   /* USER CODE END 3 */
