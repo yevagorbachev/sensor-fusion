@@ -24,7 +24,7 @@
 
 #include "stdio.h"
 #include "string.h"
-// #include "lsm303dlhc.h"
+// #include "lsm303agr_reg.c"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -143,7 +143,7 @@ HAL_StatusTypeDef i2c1_write(uint8_t reg, uint8_t* buf, uint16_t len)
 	status = HAL_I2C_Mem_Write(&hi2c1, LSM303_WHOAMI, reg, 1, buf, len, 100);
 	if (status != HAL_OK)
 	{
-		printf("Failed to write %d bytes starting at register 0x%.2x to LSM303: ", len, reg);
+		printf("Failed to write %d bytes starting at register 0x%.2hX to LSM303: ", len, reg);
 		print_hal(status);
 	}
 	return status;
@@ -155,34 +155,42 @@ HAL_StatusTypeDef i2c1_read(uint8_t reg, uint8_t* buf, uint16_t len)
 	status = HAL_I2C_Mem_Read(&hi2c1, LSM303_WHOAMI, reg, 1, buf, len, 100);
 	if (status != HAL_OK)
 	{
-		printf("Failed to read %d bytes starting at register 0x%.2x from LSM303: ", len, reg);
+		printf("Failed to read %d bytes starting at register 0x%.2hX from LSM303: ", len, reg);
 		print_hal(status);
 	}
 	return status;
 }
 
 typedef struct {
-	int x;
-	int y;
-	int z;
+	float x;
+	float y;
+	float z;
 } accel_t;
 
-accel_t convert_accel(const uint8_t* buf)
+accel_t convert_accel(const int8_t* buf)
 {
-	// big endian: MSB first
+	// little endian (ctrl4[1] set  to zero)
 	accel_t ret;
-	ret.x = (buf[0] << 8) + buf[1];
-	ret.y = (buf[2] << 8) + buf[3];
-	ret.z = (buf[4] << 8) + buf[5];
+	ret.x = ((int16_t) buf[1] * 256) + (int16_t) buf[0];
+	ret.y = ((int16_t) buf[3] * 256) + (int16_t) buf[2];
+	ret.z = ((int16_t) buf[5] * 256) + (int16_t) buf[4];
 	return ret;
+}
+
+float accel_2g_hr_mg(int16_t val)
+{
+	return ((float) val / 16.0f) * 0.98f;
 }
 
 void print_accel(accel_t accel)
 {
-	printf("X: %d, Y: %d, Z: %d\n", accel.x, accel.y, accel.z);
+	int x = (int) accel_2g_hr_mg(accel.x);
+	int y = (int) accel_2g_hr_mg(accel.y);
+	int z = (int) accel_2g_hr_mg(accel.z);
+	printf("X: %d, Y: %d, Z: %d [mg]\n", x, y, z);
 }
 
-#define COMMENT "Printing without length spec"
+#define COMMENT "fixed full-scale"
 
 void my_init(void)
 {
@@ -199,7 +207,7 @@ void my_init(void)
 	i2c1_read(LSM303_CTRL1, &ctrl_reg1, 1);
 	printf("CTRL_REG1: 0x%.2x\n", ctrl_reg1);
 
-	uint8_t ctrl_reg4 = 0b01001000;
+	uint8_t ctrl_reg4 = 0b00001000;
 	i2c1_write(LSM303_CTRL1 + 3, &ctrl_reg4, 1);
 	ctrl_reg4 = 0;
 	i2c1_read(LSM303_CTRL1 + 3, &ctrl_reg4, 1);
@@ -210,20 +218,19 @@ void my_init(void)
 void loop(int loop_count)
 {
 	uint8_t status;
-	uint8_t accel[6];
+	int8_t accel[6];
 	accel_t acceleration_mg;
 
 	i2c1_read(LSM303_STATUS, &status, 1);
-	printf("Status register: 0x%.2x\n", status);
 	if (status & 0b00001000) // xyz ready
 	{
 		for (int i = 0; i < 6; i++)
 		{
-			i2c1_read(LSM303_DATA + i, accel + i, 1);
+			i2c1_read(LSM303_DATA + i, (uint8_t*)accel + i, 1);
 		}
 		// i2c1_read(LSM303_DATA, accel, 6);
 		printf("(%d) Acceleration register: ", loop_count);
-		print_hex(accel, 6);
+		print_hex((uint8_t*)accel, 6);
 		acceleration_mg = convert_accel(accel);
 		print_accel(acceleration_mg);
 	}
