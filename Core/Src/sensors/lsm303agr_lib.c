@@ -17,7 +17,7 @@
   ******************************************************************************
   */
 
-#include "lsm303agr_reg.h"
+#include <sensors/lsm303agr_lib.h>
 
 /**
   * @defgroup  LSM303AGR

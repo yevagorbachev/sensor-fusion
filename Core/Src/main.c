@@ -21,14 +21,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
-#include "stdio.h"
-#include "string.h"
-// #include "lsm303agr_reg.c"
+#include "sensors/accel.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+
 
 typedef enum
 {
@@ -63,7 +61,11 @@ I2S_HandleTypeDef hi2s3;
 
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim10;
+
 /* USER CODE BEGIN PV */
+
+stmdev_ctx_t accel_ctx;
 
 /* USER CODE END PV */
 
@@ -76,14 +78,28 @@ static void MX_I2S3_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USB_OTG_FS_USB_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// wrapping HAL function for brevity
+void toggle_led(led_t led)
+{
+	HAL_GPIO_TogglePin(GPIOD, led);
+}
+void set_led(led_t led)
+{
+	HAL_GPIO_WritePin(GPIOD, led, GPIO_PIN_SET);
+}
+void reset_led(led_t led)
+{
+	HAL_GPIO_WritePin(GPIOD, led, GPIO_PIN_RESET);
+}
 
-// overrides system _write so we can use SWD
+// overrides syscall _write so we can use SWV
 int _write(int file, char* ptr, int len)
 {
 	for (int DataIdx = 0; DataIdx < len; DataIdx++)
@@ -93,146 +109,31 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-void print_hex(const uint8_t* buf, int len)
-{
-	for (int i = 0; i < len; i++)
-	{
-		printf("%.2hX", buf[i]);
-	}
-	printf("\n");
-}
-
-
-void toggle_led(led_t led)
-{
-	HAL_GPIO_TogglePin(GPIOD, led);
-}
-
-void set_led(led_t led)
-{
-	HAL_GPIO_WritePin(GPIOD, led, GPIO_PIN_SET);
-}
-
-void reset_led(led_t led)
-{
-	HAL_GPIO_WritePin(GPIOD, led, GPIO_PIN_RESET);
-}
-
-void print_hal(HAL_StatusTypeDef status)
-{
-	switch (status)
-	{
-		case HAL_OK:
-			printf("HAL OK\n");
-			break;
-		case HAL_ERROR:
-			printf("HAL ERROR\n");
-			break;
-		case HAL_TIMEOUT:
-			printf("HAL TIMEOUT\n");
-			break;
-		case HAL_BUSY:
-			printf("HAL BUSY\n");
-			break;
-	}
-}
-
-HAL_StatusTypeDef i2c1_write(uint8_t reg, uint8_t* buf, uint16_t len)
-{
-	HAL_StatusTypeDef status;
-	status = HAL_I2C_Mem_Write(&hi2c1, LSM303_WHOAMI, reg, 1, buf, len, 100);
-	if (status != HAL_OK)
-	{
-		printf("Failed to write %d bytes starting at register 0x%.2hX to LSM303: ", len, reg);
-		print_hal(status);
-	}
-	return status;
-}
-
-HAL_StatusTypeDef i2c1_read(uint8_t reg, uint8_t* buf, uint16_t len)
-{
-	HAL_StatusTypeDef status;
-	status = HAL_I2C_Mem_Read(&hi2c1, LSM303_WHOAMI, reg, 1, buf, len, 100);
-	if (status != HAL_OK)
-	{
-		printf("Failed to read %d bytes starting at register 0x%.2hX from LSM303: ", len, reg);
-		print_hal(status);
-	}
-	return status;
-}
-
-typedef struct {
-	float x;
-	float y;
-	float z;
-} accel_t;
-
-accel_t convert_accel(const int8_t* buf)
-{
-	// little endian (ctrl4[1] set  to zero)
-	accel_t ret;
-	ret.x = ((int16_t) buf[1] * 256) + (int16_t) buf[0];
-	ret.y = ((int16_t) buf[3] * 256) + (int16_t) buf[2];
-	ret.z = ((int16_t) buf[5] * 256) + (int16_t) buf[4];
-	return ret;
-}
-
-float accel_2g_hr_mg(int16_t val)
-{
-	return ((float) val / 16.0f) * 0.98f;
-}
-
-void print_accel(accel_t accel)
-{
-	int x = (int) accel_2g_hr_mg(accel.x);
-	int y = (int) accel_2g_hr_mg(accel.y);
-	int z = (int) accel_2g_hr_mg(accel.z);
-	printf("X: %d, Y: %d, Z: %d [mg]\n", x, y, z);
-}
-
-#define COMMENT "fixed full-scale"
+#define COMMENT "Implementing ST interface"
 
 void my_init(void)
 {
 	printf(COMMENT);
 	printf("\n");
 
-	uint8_t whoami = 0x00;
-	i2c1_read(LSM303_WHOAMI_REG, &whoami, 1);
-	printf("WHOAMI: 0x%.2x\n", whoami);
-
-	uint8_t ctrl_reg1 = 0b01010111;
-	i2c1_write(LSM303_CTRL1, &ctrl_reg1, 1);
-	ctrl_reg1 = 0;
-	i2c1_read(LSM303_CTRL1, &ctrl_reg1, 1);
-	printf("CTRL_REG1: 0x%.2x\n", ctrl_reg1);
-
-	uint8_t ctrl_reg4 = 0b00001000;
-	i2c1_write(LSM303_CTRL1 + 3, &ctrl_reg4, 1);
-	ctrl_reg4 = 0;
-	i2c1_read(LSM303_CTRL1 + 3, &ctrl_reg4, 1);
-	printf("CTRL_REG4: 0x%.2x\n", ctrl_reg4);
+	init_accel_ctx(&accel_ctx, &hi2c1);
+	// Configuring accelerometer
+	lsm303agr_xl_operating_mode_set(&accel_ctx, ACCEL_MODE);
+	lsm303agr_xl_full_scale_set(&accel_ctx, ACCEL_SCALE);
+	lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
 }
 
 
 void loop(int loop_count)
 {
-	uint8_t status;
-	int8_t accel[6];
-	accel_t acceleration_mg;
+	accel_t accel;
+	lsm303agr_status_reg_a_t status;
 
-	i2c1_read(LSM303_STATUS, &status, 1);
-	if (status & 0b00001000) // xyz ready
+	lsm303agr_xl_status_get(&accel_ctx, &status);
+	if (status.zyxda)
 	{
-		for (int i = 0; i < 6; i++)
-		{
-			i2c1_read(LSM303_DATA + i, (uint8_t*)accel + i, 1);
-		}
-		// i2c1_read(LSM303_DATA, accel, 6);
-		printf("(%d) Acceleration register: ", loop_count);
-		print_hex((uint8_t*)accel, 6);
-		acceleration_mg = convert_accel(accel);
-		print_accel(acceleration_mg);
+		get_accel(&accel_ctx, &accel);
+		printf("(%d) X %3.2f; Y %3.2f; Z %3.2f\n", loop_count, accel.x, accel.y, accel.z);
 	}
 }
 /* USER CODE END 0 */
@@ -273,6 +174,7 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_OTG_FS_USB_Init();
   MX_I2C1_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
   my_init();
   int loop_counter = 0;
@@ -504,6 +406,37 @@ static void MX_SPI1_Init(void)
   /* USER CODE BEGIN SPI1_Init 2 */
 
   /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
+
+  /* USER CODE BEGIN TIM10_Init 0 */
+
+  /* USER CODE END TIM10_Init 0 */
+
+  /* USER CODE BEGIN TIM10_Init 1 */
+
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 9600 - 1;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 65535;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM10_Init 2 */
+
+  /* USER CODE END TIM10_Init 2 */
 
 }
 

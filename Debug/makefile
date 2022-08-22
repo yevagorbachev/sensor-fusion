@@ -11,6 +11,7 @@ RM := rm -rf
 -include sources.mk
 -include Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
+-include Core/Src/sensors/subdir.mk
 -include Core/Src/subdir.mk
 -include objects.mk
 
@@ -61,7 +62,7 @@ main-build: SensorFusion.elf secondary-outputs
 
 # Tool invocations
 SensorFusion.elf SensorFusion.map: $(OBJS) $(USER_OBJS) C:\Users\yevge\STM32CubeIDE\workspace_1.10.1\SensorFusion\STM32F411VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "SensorFusion.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\yevge\STM32CubeIDE\workspace_1.10.1\SensorFusion\STM32F411VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SensorFusion.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "SensorFusion.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\yevge\STM32CubeIDE\workspace_1.10.1\SensorFusion\STM32F411VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SensorFusion.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
