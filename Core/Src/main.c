@@ -30,7 +30,6 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-
 typedef enum
 {
 	ORANGE = LD3_Pin,
@@ -106,8 +105,6 @@ int _write(int file, char* ptr, int len)
 
 #define SPITR 6
 
-
-
 void my_init(void)
 {
 	printf("Trying stuff for the start byte\n");
@@ -138,6 +135,34 @@ void my_init(void)
 	{
 		print_hal(hal);
 	}
+	/* 
+	printf("Minor refactors\n");
+	uint8_t whoami;
+
+	whoami = 0;
+	init_accel_ctx(&accel_ctx, &hi2c1);
+	lsm303agr_xl_device_id_get(&accel_ctx, &whoami);
+
+	if (whoami == LSM303AGR_I2C_ADD_XL)
+	{
+		printf("Verified accelerometer address\n");
+
+		lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
+		lsm303agr_xl_operating_mode_set(&accel_ctx, ACCEL_MODE);
+		lsm303agr_xl_full_scale_set(&accel_ctx, ACCEL_SCALE);
+		lsm303agr_xl_block_data_update_set(&accel_ctx, 0);
+
+		// printing control registers
+		uint8_t controls[4];
+		accel_ctx.read_reg(accel_ctx.handle, LSM303AGR_CTRL_REG1_A, controls, 4);
+		printf("Reading control registers: 0x");
+		print_hex(controls, 4);
+	}
+	else
+	{
+		printf("Incorrect accelerometer address %.2hX\n", whoami);
+	}
+	*/
 }
 
 
