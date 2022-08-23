@@ -18,7 +18,7 @@
   */
 
 #include <sensors/i3g4250d_lib.h>
-
+#include <stdio.h>
 /**
   * @defgroup    I3G4250D
   * @brief       This file provides a set of functions needed to drive the

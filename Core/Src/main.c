@@ -24,7 +24,7 @@
 #include <malloc.h>
 
 #include "sensors/accel.h"
-#include "sensors/i3g4250d_lib.h"
+#include "sensors/gyro.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,6 +61,7 @@ SPI_HandleTypeDef hspi1;
 /* USER CODE BEGIN PV */
 
 stmdev_ctx_t accel_ctx;
+stmdev_ctx_t gyro_ctx;
 
 /* USER CODE END PV */
 
@@ -103,84 +104,73 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-#define SPITR 6
-
 void my_init(void)
 {
-	printf("Trying stuff for the start byte\n");
+	printf("Comprehensive test 1\n");
 
+	/* Gyroscope setup */
+	printf("Initializing gyro\n");
+	init_gyro_ctx(&gyro_ctx, &hspi1);
 
-	uint8_t spi_send[SPITR];
-	uint8_t spi_recieve[SPITR];
+	uint8_t gyro_controls[5] = {0, 0, 0, 0, 0};
+	i3g4250d_write_reg(&gyro_ctx, I3G4250D_CTRL_REG1, gyro_controls, 5); // clear control registers
 
-	memset(spi_send, 0x00, SPITR);
-	memset(spi_recieve, 0x00, SPITR);
+	i3g4250d_data_rate_set(&gyro_ctx, GYRO_RATE);
+	i3g4250d_full_scale_set(&gyro_ctx, GYRO_SCALE);
 
-	spi_send[0] = 0b11000000 | 0x20U;
+	i3g4250d_read_reg(&gyro_ctx, I3G4250D_CTRL_REG1, gyro_controls, 5);
+	printf("Gyro control registers: 0x");
+	print_hex(gyro_controls, 5);
+	/* End gyroscope setup */
 
-	HAL_StatusTypeDef hal;
-
-	// here's how I think this works:
-	// byte 0 indexes the register and enables autoinc
-	// bytes 1-n are all zero (or all 1) and are as long as you want to recieve
-	HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
-	hal = HAL_SPI_TransmitReceive(&hspi1, spi_send, spi_recieve, SPITR, 100);
-	HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
-	if (hal == HAL_OK)
-	{
-		printf("Recieved data: ");
-		print_hex(spi_recieve, SPITR);
-	}
-	else
-	{
-		print_hal(hal);
-	}
-	/* 
-	printf("Minor refactors\n");
-	uint8_t whoami;
-
-	whoami = 0;
+	/* Accelerometer */
+	printf("Initializing accelerometer\n");
 	init_accel_ctx(&accel_ctx, &hi2c1);
-	lsm303agr_xl_device_id_get(&accel_ctx, &whoami);
 
-	if (whoami == LSM303AGR_I2C_ADD_XL)
-	{
-		printf("Verified accelerometer address\n");
+	uint8_t accel_controls[4] = {0x07, 0, 0, 0};
+	lsm303agr_write_reg(&accel_ctx, LSM303AGR_CTRL_REG1_A, accel_controls, 4); // clear control registers
 
-		lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
-		lsm303agr_xl_operating_mode_set(&accel_ctx, ACCEL_MODE);
-		lsm303agr_xl_full_scale_set(&accel_ctx, ACCEL_SCALE);
-		lsm303agr_xl_block_data_update_set(&accel_ctx, 0);
+	lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
+	lsm303agr_xl_operating_mode_set(&accel_ctx, ACCEL_MODE);
+	lsm303agr_xl_full_scale_set(&accel_ctx, ACCEL_SCALE);
+	lsm303agr_xl_block_data_update_set(&accel_ctx, 0);
 
-		// printing control registers
-		uint8_t controls[4];
-		accel_ctx.read_reg(accel_ctx.handle, LSM303AGR_CTRL_REG1_A, controls, 4);
-		printf("Reading control registers: 0x");
-		print_hex(controls, 4);
-	}
-	else
-	{
-		printf("Incorrect accelerometer address %.2hX\n", whoami);
-	}
-	*/
+	lsm303agr_read_reg(&accel_ctx, LSM303AGR_CTRL_REG1_A, accel_controls, 4);
+	printf("Accelerometer control registers: 0x");
+	print_hex(accel_controls, 4);
+	/* End accelerometer setup */
 }
-
 
 
 void loop(int loop_count)
 {
-	accel_t accel;
-	lsm303agr_status_reg_a_t status;
+	// printf("Loop %d\n", loop_count);
 
-	lsm303agr_xl_status_get(&accel_ctx, &status);
-	if (status.zyxda)
+	accel_t accel;
+	angular_rate_t angular_rate;
+
+	i3g4250d_status_reg_t gyro_status;
+	i3g4250d_status_reg_get(&gyro_ctx, &gyro_status);
+	if (gyro_status.zyxda)
 	{
-		get_accel(&accel_ctx, &accel);
-		printf("(%d) X %3.2f; Y %3.2f; Z %3.2f\n", loop_count, accel.x, accel.y, accel.z);
+		get_angular_rate(&gyro_ctx, &angular_rate);
+		printf("Angular rate: X %3.2f; Y %3.2f; Z %3.2f [deg/s]\n", angular_rate.x, angular_rate.y, angular_rate.z);
 	}
 	else
 	{
-		printf("(%d) No new data\n", loop_count);
+		printf("No new angular rate data\n");
+	}
+
+	lsm303agr_status_reg_a_t accel_status;
+	lsm303agr_xl_status_get(&accel_ctx, &accel_status);
+	if (accel_status.zyxda)
+	{
+		get_accel(&accel_ctx, &accel);
+		printf("Linear acceleration: X %3.2f; Y %3.2f; Z %3.2f [m/s^2]\n", accel.x, accel.y, accel.z);
+	}
+	else
+	{
+		printf("No new linear acceleration data\n");
 	}
 }
 /* USER CODE END 0 */
@@ -223,7 +213,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   my_init();
-  // int loop_counter = 0;
+  int loop_counter = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -236,7 +226,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
 	  {
-		  // loop(++loop_counter);
+		  loop(++loop_counter);
 		  toggle_led(BLUE);
 		  set_led(GREEN);
 	  }
@@ -245,7 +235,7 @@ int main(void)
 		  reset_led(BLUE);
 		  toggle_led(GREEN);
 	  }
-    HAL_Delay(100);
+    HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
@@ -440,7 +430,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -494,7 +484,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CS_I2C_SPI_GPIO_Port, CS_I2C_SPI_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -503,12 +493,12 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
                           |Audio_RST_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : CS_I2C_SPI_Pin */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
+  /*Configure GPIO pin : CS_Pin */
+  GPIO_InitStruct.Pin = CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CS_I2C_SPI_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OTG_FS_PowerSwitchOn_Pin */
   GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin;
