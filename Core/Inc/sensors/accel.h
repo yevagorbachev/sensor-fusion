@@ -10,7 +10,8 @@
 #define INC_SENSORS_ACCEL_H_
 
 #include "sensors/lsm303agr_lib.h"
-#include "main.h"
+#include "debug.h"
+#include "stm32f4xx_hal.h"
 
 #define ACCEL_UNIT_MPS // convert miligee to meters per second
 
