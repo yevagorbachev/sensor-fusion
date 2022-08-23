@@ -21,7 +21,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <malloc.h>
+
 #include "sensors/accel.h"
+#include "sensors/i3g4250d_lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,12 +43,7 @@ typedef enum
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define LSM303_WHOAMI 0x33U
 
-#define LSM303_WHOAMI_REG 0x0FU
-#define LSM303_CTRL1 0x20U
-#define LSM303_STATUS 0x27U
-#define LSM303_DATA 0x28U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -106,31 +104,42 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-#define COMMENT "Disabled block data update"
+#define SPITR 6
+
+
 
 void my_init(void)
 {
-	printf(COMMENT);
-	printf("\n");
+	printf("Trying stuff for the start byte\n");
 
-	init_accel_ctx(&accel_ctx, &hi2c1);
 
-	// verifying whoami
-	uint8_t whoami = 0;
-	lsm303agr_xl_device_id_get(&accel_ctx, &whoami);
-	printf("I2C Device Address: %.2hX\n", whoami);
+	uint8_t spi_send[SPITR];
+	uint8_t spi_recieve[SPITR];
 
-	// Configuring accelerometer
-	lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
-	lsm303agr_xl_operating_mode_set(&accel_ctx, ACCEL_MODE);
-	lsm303agr_xl_full_scale_set(&accel_ctx, ACCEL_SCALE);
-	lsm303agr_xl_block_data_update_set(&accel_ctx, 0);
+	memset(spi_send, 0x00, SPITR);
+	memset(spi_recieve, 0x00, SPITR);
 
-	uint8_t controls[4];
-	accel_ctx.read_reg(accel_ctx.handle, LSM303AGR_CTRL_REG1_A, controls, 4);
-	printf("Reading control registers: 0x");
-	print_hex(controls, 4);
+	spi_send[0] = 0b11000000 | 0x20U;
+
+	HAL_StatusTypeDef hal;
+
+	// here's how I think this works:
+	// byte 0 indexes the register and enables autoinc
+	// bytes 1-n are all zero (or all 1) and are as long as you want to recieve
+	HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
+	hal = HAL_SPI_TransmitReceive(&hspi1, spi_send, spi_recieve, SPITR, 100);
+	HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
+	if (hal == HAL_OK)
+	{
+		printf("Recieved data: ");
+		print_hex(spi_recieve, SPITR);
+	}
+	else
+	{
+		print_hal(hal);
+	}
 }
+
 
 
 void loop(int loop_count)
@@ -189,7 +198,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   my_init();
-  int loop_counter = 0;
+  // int loop_counter = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -202,7 +211,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
 	  {
-		  loop(++loop_counter);
+		  // loop(++loop_counter);
 		  toggle_led(BLUE);
 		  set_led(GREEN);
 	  }
@@ -460,7 +469,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(CS_I2C_SPI_GPIO_Port, CS_I2C_SPI_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -469,24 +478,12 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
                           |Audio_RST_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : DATA_Ready_Pin */
-  GPIO_InitStruct.Pin = DATA_Ready_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(DATA_Ready_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PE3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  /*Configure GPIO pin : CS_I2C_SPI_Pin */
+  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : INT1_Pin INT2_Pin MEMS_INT2_Pin */
-  GPIO_InitStruct.Pin = INT1_Pin|INT2_Pin|MEMS_INT2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  HAL_GPIO_Init(CS_I2C_SPI_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OTG_FS_PowerSwitchOn_Pin */
   GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin;
@@ -529,6 +526,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : MEMS_INT2_Pin */
+  GPIO_InitStruct.Pin = MEMS_INT2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
 
 }
 
