@@ -26,7 +26,7 @@ int32_t accel_write(void* handle, uint8_t reg, uint8_t* buf, uint16_t len)
 #ifdef INC_DEBUG_H_
 	if (status != HAL_OK)
 	{
-		printf("#RED#LSM303AGR: Failed writing %d bytes to %.2hX\n", len, reg, LSM303AGR_A_TIMEOUT);
+		printf("#RED#LSM303AGR: Failed writing %d bytes to %.2hX\n", len, reg);
 		print_hal(status);
 	}
 #endif
