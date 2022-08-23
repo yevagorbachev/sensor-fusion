@@ -61,8 +61,6 @@ I2S_HandleTypeDef hi2s3;
 
 SPI_HandleTypeDef hspi1;
 
-TIM_HandleTypeDef htim10;
-
 /* USER CODE BEGIN PV */
 
 stmdev_ctx_t accel_ctx;
@@ -78,7 +76,6 @@ static void MX_I2S3_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USB_OTG_FS_USB_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -109,7 +106,7 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-#define COMMENT "Implementing ST interface"
+#define COMMENT "Disabled block data update"
 
 void my_init(void)
 {
@@ -117,10 +114,22 @@ void my_init(void)
 	printf("\n");
 
 	init_accel_ctx(&accel_ctx, &hi2c1);
+
+	// verifying whoami
+	uint8_t whoami = 0;
+	lsm303agr_xl_device_id_get(&accel_ctx, &whoami);
+	printf("I2C Device Address: %.2hX\n", whoami);
+
 	// Configuring accelerometer
+	lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
 	lsm303agr_xl_operating_mode_set(&accel_ctx, ACCEL_MODE);
 	lsm303agr_xl_full_scale_set(&accel_ctx, ACCEL_SCALE);
-	lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
+	lsm303agr_xl_block_data_update_set(&accel_ctx, 0);
+
+	uint8_t controls[4];
+	accel_ctx.read_reg(accel_ctx.handle, LSM303AGR_CTRL_REG1_A, controls, 4);
+	printf("Reading control registers: 0x");
+	print_hex(controls, 4);
 }
 
 
@@ -134,6 +143,10 @@ void loop(int loop_count)
 	{
 		get_accel(&accel_ctx, &accel);
 		printf("(%d) X %3.2f; Y %3.2f; Z %3.2f\n", loop_count, accel.x, accel.y, accel.z);
+	}
+	else
+	{
+		printf("(%d) No new data\n", loop_count);
 	}
 }
 /* USER CODE END 0 */
@@ -174,7 +187,6 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_OTG_FS_USB_Init();
   MX_I2C1_Init();
-  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
   my_init();
   int loop_counter = 0;
@@ -192,12 +204,12 @@ int main(void)
 	  {
 		  loop(++loop_counter);
 		  toggle_led(BLUE);
-		  set_led(ORANGE);
+		  set_led(GREEN);
 	  }
 	  else
 	  {
 		  reset_led(BLUE);
-		  toggle_led(ORANGE);
+		  toggle_led(GREEN);
 	  }
     HAL_Delay(100);
   }
@@ -406,37 +418,6 @@ static void MX_SPI1_Init(void)
   /* USER CODE BEGIN SPI1_Init 2 */
 
   /* USER CODE END SPI1_Init 2 */
-
-}
-
-/**
-  * @brief TIM10 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM10_Init(void)
-{
-
-  /* USER CODE BEGIN TIM10_Init 0 */
-
-  /* USER CODE END TIM10_Init 0 */
-
-  /* USER CODE BEGIN TIM10_Init 1 */
-
-  /* USER CODE END TIM10_Init 1 */
-  htim10.Instance = TIM10;
-  htim10.Init.Prescaler = 9600 - 1;
-  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim10.Init.Period = 65535;
-  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM10_Init 2 */
-
-  /* USER CODE END TIM10_Init 2 */
 
 }
 
