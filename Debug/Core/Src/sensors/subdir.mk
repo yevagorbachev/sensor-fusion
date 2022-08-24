@@ -7,23 +7,29 @@
 C_SRCS += \
 ../Core/Src/sensors/accel.c \
 ../Core/Src/sensors/gyro.c \
-../Core/Src/sensors/i3g4250d_lib.c \
-../Core/Src/sensors/lis3mdl_lib.c \
-../Core/Src/sensors/lsm303agr_lib.c 
+../Core/Src/sensors/i3g4250d_reg.c \
+../Core/Src/sensors/lis3mdl_reg.c \
+../Core/Src/sensors/lsm303agr_reg.c \
+../Core/Src/sensors/mag_e.c \
+../Core/Src/sensors/mag_i.c 
 
 OBJS += \
 ./Core/Src/sensors/accel.o \
 ./Core/Src/sensors/gyro.o \
-./Core/Src/sensors/i3g4250d_lib.o \
-./Core/Src/sensors/lis3mdl_lib.o \
-./Core/Src/sensors/lsm303agr_lib.o 
+./Core/Src/sensors/i3g4250d_reg.o \
+./Core/Src/sensors/lis3mdl_reg.o \
+./Core/Src/sensors/lsm303agr_reg.o \
+./Core/Src/sensors/mag_e.o \
+./Core/Src/sensors/mag_i.o 
 
 C_DEPS += \
 ./Core/Src/sensors/accel.d \
 ./Core/Src/sensors/gyro.d \
-./Core/Src/sensors/i3g4250d_lib.d \
-./Core/Src/sensors/lis3mdl_lib.d \
-./Core/Src/sensors/lsm303agr_lib.d 
+./Core/Src/sensors/i3g4250d_reg.d \
+./Core/Src/sensors/lis3mdl_reg.d \
+./Core/Src/sensors/lsm303agr_reg.d \
+./Core/Src/sensors/mag_e.d \
+./Core/Src/sensors/mag_i.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -33,7 +39,7 @@ Core/Src/sensors/%.o Core/Src/sensors/%.su: ../Core/Src/sensors/%.c Core/Src/sen
 clean: clean-Core-2f-Src-2f-sensors
 
 clean-Core-2f-Src-2f-sensors:
-	-$(RM) ./Core/Src/sensors/accel.d ./Core/Src/sensors/accel.o ./Core/Src/sensors/accel.su ./Core/Src/sensors/gyro.d ./Core/Src/sensors/gyro.o ./Core/Src/sensors/gyro.su ./Core/Src/sensors/i3g4250d_lib.d ./Core/Src/sensors/i3g4250d_lib.o ./Core/Src/sensors/i3g4250d_lib.su ./Core/Src/sensors/lis3mdl_lib.d ./Core/Src/sensors/lis3mdl_lib.o ./Core/Src/sensors/lis3mdl_lib.su ./Core/Src/sensors/lsm303agr_lib.d ./Core/Src/sensors/lsm303agr_lib.o ./Core/Src/sensors/lsm303agr_lib.su
+	-$(RM) ./Core/Src/sensors/accel.d ./Core/Src/sensors/accel.o ./Core/Src/sensors/accel.su ./Core/Src/sensors/gyro.d ./Core/Src/sensors/gyro.o ./Core/Src/sensors/gyro.su ./Core/Src/sensors/i3g4250d_reg.d ./Core/Src/sensors/i3g4250d_reg.o ./Core/Src/sensors/i3g4250d_reg.su ./Core/Src/sensors/lis3mdl_reg.d ./Core/Src/sensors/lis3mdl_reg.o ./Core/Src/sensors/lis3mdl_reg.su ./Core/Src/sensors/lsm303agr_reg.d ./Core/Src/sensors/lsm303agr_reg.o ./Core/Src/sensors/lsm303agr_reg.su ./Core/Src/sensors/mag_e.d ./Core/Src/sensors/mag_e.o ./Core/Src/sensors/mag_e.su ./Core/Src/sensors/mag_i.d ./Core/Src/sensors/mag_i.o ./Core/Src/sensors/mag_i.su
 
 .PHONY: clean-Core-2f-Src-2f-sensors
 
