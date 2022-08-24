@@ -51,16 +51,34 @@ int32_t gyro_read(void* handle, uint8_t reg, uint8_t* buf, uint16_t len)
 	return (int32_t) status;
 }
 
+/** Checks status reg, puts angular rate to output (does conversion) if there is data on all axes
+ * Returns 0 for success, -1 for no new data, 1-3 for HAL status
+ */
 int32_t get_angular_rate(stmdev_ctx_t* ctx, angular_rate_t* output)
 {
 	int16_t buf[3];
-	int32_t ret = i3g4250d_angular_rate_raw_get(ctx, buf);
-	if ((HAL_StatusTypeDef) ret == HAL_OK)
+	int32_t ret;
+	i3g4250d_status_reg_t status;
+
+	ret = i3g4250d_status_reg_get(ctx, &status);
+	if (ret) {return ret;} // exit if hal failed
+
+	if (status.zyxda)
 	{
-		float_t factor = 70.0f / 1000.0f;
-		output->x = buf[0] * factor;
-		output->y = buf[1] * factor;
-		output->z = buf[2] * factor;
+		ret = i3g4250d_angular_rate_raw_get(ctx, buf);
+		if (ret) {return ret;} // exit if hal failed
+
+		if (!ret) {
+			// UPDATE FACTOR AND COMMENT IF FULL-SCALE CONFIG CHANGES
+			float_t factor = 70.0f / 1000.0f; // FS 2000 DPS -> DPS
+			output->x = buf[0] * factor;
+			output->y = buf[1] * factor;
+			output->z = buf[2] * factor;
+		}
+		return 0;
 	}
-	return ret;
+	else
+	{
+		return -1;
+	}
 }
