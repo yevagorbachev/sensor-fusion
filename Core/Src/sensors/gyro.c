@@ -61,21 +61,26 @@ int32_t get_angular_rate(stmdev_ctx_t* ctx, angular_rate_t* output)
 	i3g4250d_status_reg_t status;
 
 	ret = i3g4250d_status_reg_get(ctx, &status);
-	if (ret) {return ret;} // exit if hal failed
-
-	if (status.zyxda)
+	if (ret)
+	{
+		return ret;
+	}
+	else if (status.zyxda)
 	{
 		ret = i3g4250d_angular_rate_raw_get(ctx, buf);
-		if (ret) {return ret;} // exit if hal failed
-
-		if (!ret) {
+		if (ret)
+		{
+			return ret;
+		}
+		else
+		{
 			// UPDATE FACTOR AND COMMENT IF FULL-SCALE CONFIG CHANGES
 			float_t factor = 70.0f / 1000.0f; // FS 2000 DPS -> DPS
 			output->x = buf[0] * factor;
 			output->y = buf[1] * factor;
 			output->z = buf[2] * factor;
+			return 0;
 		}
-		return 0;
 	}
 	else
 	{

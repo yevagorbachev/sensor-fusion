@@ -15,10 +15,11 @@ typedef struct
 {
 	int32_t (*task)(void*, uint32_t);
 	void* data;
+	TIM_HandleTypeDef* timer;
 	uint32_t period;
 	uint32_t last;
 } bad_task_t;
 
-void run_tasks(TIM_HandleTypeDef* htim, bad_task_t* taskv, uint16_t taskc);
+void run_tasks(bad_task_t* taskv, uint16_t taskc);
 
 #endif /* INC_BADSCHED_H_ */

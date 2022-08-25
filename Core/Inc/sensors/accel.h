@@ -17,7 +17,6 @@
 #define LSM303AGR_XL_TIMEOUT 100
 
 #define ACCEL_SCALE LSM303AGR_2g
-#define ACCEL_MODE LSM303AGR_HR_12bit
 
 void init_accel_ctx(stmdev_ctx_t* ctx, I2C_HandleTypeDef* handle);
 int32_t accel_read(void* handle, uint8_t reg, uint8_t* buf, uint16_t len);

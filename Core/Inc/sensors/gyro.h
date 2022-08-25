@@ -14,7 +14,6 @@
 #include "stm32f4xx_hal.h"
 
 #define GYRO_SCALE I3G4250D_2000dps
-#define GYRO_RATE I3G4250D_ODR_100Hz
 #define I3G4250D_TIMEOUT 100
 
 void init_gyro_ctx(stmdev_ctx_t* ctx, SPI_HandleTypeDef* handle);

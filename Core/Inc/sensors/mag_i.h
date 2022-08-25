@@ -19,4 +19,5 @@ void init_mag_i_ctx(stmdev_ctx_t* ctx, I2C_HandleTypeDef* handle);
 int32_t mag_i_read(void* handle, uint8_t reg, uint8_t* buf, uint16_t len);
 int32_t mag_i_write(void* handle, uint8_t reg, uint8_t* buf, uint16_t len);
 
+int32_t get_mag_i(stmdev_ctx_t* ctx, mag_field_t* output);
 #endif /* INC_SENSORS_MAG_I_H_ */
