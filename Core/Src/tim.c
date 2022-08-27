@@ -21,6 +21,8 @@
 #include "tim.h"
 
 /* USER CODE BEGIN 0 */
+#define TIM10_PRESCALER 96
+#define TIM11_PRESCALER 9600
 
 /* USER CODE END 0 */
 

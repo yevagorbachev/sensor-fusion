@@ -21,18 +21,10 @@
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
-#include "usb_otg.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <malloc.h>
-
-#include "sensors/accel.h"
-#include "sensors/gyro.h"
-#include "sensors/mag_i.h"
-#include "sensors/mag_e.h"
-#include "badsched.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,9 +44,7 @@ typedef enum
 /* USER CODE BEGIN PD */
 
 #define HCLK_kHz 96000
-#define TIM10_PRESCALER 96
 #define TIM10_DIVIDER_MS HCLK_kHz / TIM10_PRESCALER
-#define TIM11_PRESCALER 9600
 #define TIM11_DIVIDER_MS HCLK_kHz / TIM11_PRESCALER
 
 /* USER CODE END PD */
@@ -73,8 +63,9 @@ stmdev_ctx_t gyro_ctx;
 stmdev_ctx_t mag_i_ctx;
 stmdev_ctx_t mag_e_ctx;
 
-accel_t acceleration;
 angular_rate_t angular_rate;
+uint16_t last_gyro_time;
+accel_t acceleration;
 mag_field_t mag_i_field;
 mag_field_t mag_e_field;
 
@@ -112,9 +103,9 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-void my_init(void)
+void init(void)
 {
-	printf("Started both timers\n");
+	printf("Second attempt at handling DRDY interrupt\n");
 
 	/* Notes
 	 * ODR - output data rate, usually Hz
@@ -126,18 +117,22 @@ void my_init(void)
 	 * Full scale is set in each sensor implementation's header file because the
 	 * conversion constant depends on the full scale
 	 */
+	__disable_irq(); // the gyro DRDY messes with stuff if this isn't set??
 	/* Gyroscope setup
-	 * Set: ODR, FS
+	 * Set: ODR, FS, DRDY interrupt
 	 */
 	printf("Initializing gyro\n");
 	init_gyro_ctx(&gyro_ctx, &hspi1);
 
-	uint8_t gyro_controls[] = {0, 0, 0, 0, 0};
-	i3g4250d_write_reg(&gyro_ctx, I3G4250D_CTRL_REG1, gyro_controls, sizeof(gyro_controls)); // clear control registers
+	uint8_t gyro_controls[] = {0x07U, 0, 0, 0, 0}; // control register defaults
+	i3g4250d_write_reg(&gyro_ctx, I3G4250D_CTRL_REG1, gyro_controls, sizeof(gyro_controls));
 
-	i3g4250d_data_rate_set(&gyro_ctx, I3G4250D_ODR_100Hz);
+	i3g4250d_data_rate_set(&gyro_ctx, I3G4250D_ODR_400Hz);
 	i3g4250d_full_scale_set(&gyro_ctx, GYRO_SCALE);
+	i3g4250d_int2_route_t gyro_int2_cfg = {.i2_empty = 0, .i2_orun = 0, .i2_wtm = 0, .i2_drdy = 1};
+	i3g4250d_pin_int2_route_set(&gyro_ctx, gyro_int2_cfg);
 
+	// print to confirm values
 	i3g4250d_read_reg(&gyro_ctx, I3G4250D_CTRL_REG1, gyro_controls, sizeof(gyro_controls));
 	printf("Gyro control registers: 0x");
 	print_hex(gyro_controls, 5);
@@ -149,14 +144,15 @@ void my_init(void)
 	printf("Initializing accelerometer\n");
 	init_accel_ctx(&accel_ctx, &hi2c1);
 
+	// default values fromm datasheet
 	uint8_t accel_controls[] = {0x07U, 0, 0, 0, 0, 0};
 	lsm303agr_write_reg(&accel_ctx, LSM303AGR_CTRL_REG1_A,
-			accel_controls, sizeof(accel_controls)); // clear control registers
+			accel_controls, sizeof(accel_controls));
 
 	lsm303agr_xl_data_rate_set(&accel_ctx, LSM303AGR_XL_ODR_100Hz);
 	lsm303agr_xl_operating_mode_set(&accel_ctx, LSM303AGR_HR_12bit);
 	lsm303agr_xl_full_scale_set(&accel_ctx, ACCEL_SCALE);
-	lsm303agr_xl_block_data_update_set(&accel_ctx, 0); // might be unnecessary?
+	// lsm303agr_xl_block_data_update_set(&accel_ctx, 0); // might be unnecessary?
 
 	lsm303agr_read_reg(&accel_ctx, LSM303AGR_CTRL_REG1_A, accel_controls, sizeof(accel_controls));
 	printf("Accelerometer control registers: 0x");
@@ -169,6 +165,7 @@ void my_init(void)
 	printf("Initalizing internal magnetometer\n");
 	init_mag_i_ctx(&mag_i_ctx, &hi2c1);
 
+	// default values from datasheet
 	uint8_t mag_i_controls[] = {0x03U, 0, 0};
 	lsm303agr_write_reg(&mag_i_ctx, LSM303AGR_CFG_REG_A_M,
 			mag_i_controls, sizeof(mag_i_controls));
@@ -189,6 +186,7 @@ void my_init(void)
 	printf("Initalizing external magnetometer\n");
 	init_mag_e_ctx(&mag_e_ctx, &hi2c1);
 
+	// initalize registers to default values from datasheet;
 	uint8_t mag_e_controls[] = {0x10U, 0, 0x03U, 0, 0};
 	lis3mdl_write_reg(&mag_e_ctx, LIS3MDL_CTRL_REG1,
 			mag_e_controls, sizeof(mag_e_controls));
@@ -203,6 +201,7 @@ void my_init(void)
 	printf("External magnetometer control registers: 0x");
 	print_hex(mag_e_controls, sizeof(mag_e_controls));
 	/* End external magnetometer setup */
+	__enable_irq();
 }
 
 int32_t flash_leds(void* unused, uint32_t elapsed)
@@ -250,12 +249,13 @@ int32_t run_mag_e(void* data, uint32_t elapsed)
 
 int32_t print_quantities(void* unused, uint32_t elapsed)
 {
-	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
+	if (1) // (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
 	{
+		printf("#GRN#Data output:\n");
 		printf("Linear acceleration: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
 				acceleration.x, acceleration.y, acceleration.z, acceleration.unit);
-		printf("Angular rate: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
-				angular_rate.x, angular_rate.y, angular_rate.z, angular_rate.unit);
+//		printf("Angular rate: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
+//				angular_rate.x, angular_rate.y, angular_rate.z, angular_rate.unit);
 		printf("Internal mag reading: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
 				mag_i_field.x, mag_i_field.y, mag_i_field.z, mag_i_field.unit);
 		printf("External mag reading: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
@@ -300,17 +300,16 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
-  MX_USB_OTG_FS_USB_Init();
   MX_I2C1_Init();
   MX_TIM10_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-	my_init();
+	init();
 	bad_task_t routines[] = {
-		{.task = run_accel, .data = &acceleration, .timer = &htim10, .period = 20000U, .last = 0U},
-		{.task = run_gyro, .data = &angular_rate, .timer = &htim10, .period = 20000U, .last = 0U},
-		{.task = run_mag_i, .data = &mag_i_field, .timer = &htim10, .period = 20000U, .last = 0U},
-		{.task = run_mag_e, .data = &mag_e_field, .timer = &htim10, .period = 10000U, .last = 0U},
+		{.task = run_accel, .data = &acceleration, .timer = &htim11, .period = 2000U, .last = 0U},
+		//{.task = run_gyro, .data = &angular_rate, .timer = &htim11, .period = 2000U, .last = 0U},
+		{.task = run_mag_i, .data = &mag_i_field, .timer = &htim11, .period = 2000U, .last = 0U},
+		{.task = run_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 1000U, .last = 0U},
 		{.task = flash_leds, .data = NULL, .timer = &htim11, .period = 5000U, .last = 0U},
 		{.task = print_quantities, .data = NULL, .timer = &htim11, .period = 5000U, .last = 0U},
 	};
@@ -327,7 +326,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//		printf("Compiler thinks routines is %d long\n")
 		run_tasks(routines, sizeof(routines) / sizeof(bad_task_t));
 	}
   /* USER CODE END 3 */
@@ -379,6 +377,21 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	int32_t ret;
+	uint16_t new_time;
+
+	new_time = __HAL_TIM_GET_COUNTER(&htim10);
+	ret = get_angular_rate_nocheck(&gyro_ctx, &angular_rate);
+	if (!ret)
+	{
+		printf("Angular rate: X %3.2f, Y %3.2f, Z %3.2f [%s] (+%u ct)\n",
+				angular_rate.x, angular_rate.y, angular_rate.z, angular_rate.unit,
+				new_time - last_gyro_time);
+		last_gyro_time = new_time;
+	}
+}
 
 /* USER CODE END 4 */
 

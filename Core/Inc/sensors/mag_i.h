@@ -13,7 +13,7 @@
 #include "debug.h"
 #include "stm32f4xx_hal.h"
 
-#define LSM303AGR_MG_TIMEOUT 100
+#define LSM303AGR_MG_TIMEOUT 10
 
 void init_mag_i_ctx(stmdev_ctx_t* ctx, I2C_HandleTypeDef* handle);
 int32_t mag_i_read(void* handle, uint8_t reg, uint8_t* buf, uint16_t len);

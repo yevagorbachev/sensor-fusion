@@ -19,7 +19,7 @@
 #include "debug.h"
 #include "stm32f4xx_hal.h"
 
-#define LIS3MDL_TIMEOUT 100
+#define LIS3MDL_TIMEOUT 10
 #define MAG_E_SCALE LIS3MDL_4_GAUSS
 
 void init_mag_e_ctx(stmdev_ctx_t* ctx, I2C_HandleTypeDef* handle);
