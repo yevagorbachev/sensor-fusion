@@ -20,6 +20,8 @@ typedef struct
 	uint32_t last;
 } bad_task_t;
 
+#define RUN_TASKS(routines) run_tasks(routines, sizeof(routines) / sizeof(bad_task_t))
+
 void run_tasks(bad_task_t* taskv, uint16_t taskc);
 
 #endif /* INC_BADSCHED_H_ */

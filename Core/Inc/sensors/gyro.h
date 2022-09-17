@@ -14,6 +14,10 @@
 #include "stm32f4xx_hal.h"
 
 #define GYRO_SCALE I3G4250D_500dps
+// factors in mdps/digit
+#define I3G4250D_FS245_FACTOR 8.75f // can vary 7.4 to 10.1
+#define I3G4250D_FS500_FACTOR 17.5f // can vary 14.8 to 19.8
+#define I3G4250D_FS2000_FACTOR 70f // can vary 59.2 to 79.3
 #define I3G4250D_TIMEOUT 10
 
 void init_gyro_ctx(stmdev_ctx_t* ctx, SPI_HandleTypeDef* handle);

@@ -37,6 +37,8 @@ extern TIM_HandleTypeDef htim10;
 extern TIM_HandleTypeDef htim11;
 
 /* USER CODE BEGIN Private defines */
+#define TIM10_PRESCALER 96
+#define TIM11_PRESCALER 9600
 
 /* USER CODE END Private defines */
 
