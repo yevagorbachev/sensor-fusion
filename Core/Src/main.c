@@ -50,6 +50,12 @@ typedef enum
 	BLUE = LD6_Pin
 } led_t;
 
+typedef enum
+{
+	INIT,
+	MAGCAL,
+} program_mode_t;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -61,7 +67,6 @@ typedef enum
 
 /* USER CODE END PD */
 
-
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
@@ -70,6 +75,7 @@ typedef enum
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+program_mode_t program_mode;
 
 // control structures
 stmdev_ctx_t accel_ctx;
@@ -109,6 +115,7 @@ void reset_led(led_t led)
 }
 
 // overrides syscall _write so we can use SWV
+
 int _write(int file, char* ptr, int len)
 {
 	for (int i = 0; i < len; i++)
@@ -118,39 +125,11 @@ int _write(int file, char* ptr, int len)
 	return len;
 }
 
-//_ATTRIBUTE ((__format__ (__printf__, 1, 2)))
-//int serial_out(const char* __restrict fmt, ...)
-//{
-//	char buf[256];
-//	va_list args;
-//	va_start(args, fmt);
-//	int ret;
-//
-//	ret = vsnprintf(buf, 256, fmt, args);
-//	ret = (int) HAL_USART_Transmit(&husart1, (uint8_t*) buf, strlen(buf), 5);
-//
-//	return ret;
-//}
-
-void init(void)
+/* Gyroscope setup
+ * Set: ODR, FS, DRDY interrupt
+ */
+void init_gyro(void)
 {
-	printf("Testing refactor\n");
-
-	/* Notes
-	 * ODR - output data rate, usually Hz
-	 * FS - full scale, set in each sensor implementation's header becuase the conversion
-	 * 	we use in <quantity>_get is dependent on this
-	 * OM - operating mode, for the mags
-	 * PM - power mode, low/normal/high res
-	 * ODR - output data rate; FS - full scale, OM - operating mode, PM - power mode
-	 * Full scale is set in each sensor implementation's header file because the
-	 * conversion constant depends on the full scale
-	 */
-
-	__disable_irq(); // the gyro DRDY messes with stuff if this isn't set??
-	/* Gyroscope setup
-	 * Set: ODR, FS, DRDY interrupt
-	 */
 #ifdef INC_DEBUG_H_
 	printf("Initializing gyro\n");
 #endif
@@ -171,11 +150,13 @@ void init(void)
 	printf("Gyro control registers: 0x");
 	print_hex(gyro_controls, 5);
 #endif
-	/* End gyroscope setup */
+}
 
-	/* Accelerometer setup
-	 * Set: ODR, FS, Power mode (Low power, normal, high resolution)
-	 */
+/* Accelerometer setup
+ * Set: ODR, FS, Power mode (Low power, normal, high resolution)
+ */
+void init_accel(void)
+{
 #ifdef INC_DEBUG_H_
 	printf("Initializing accelerometer\n");
 	init_accel_ctx(&accel_ctx, &hi2c1);
@@ -196,12 +177,13 @@ void init(void)
 	printf("Accelerometer control registers: 0x");
 	print_hex(accel_controls, sizeof(accel_controls));
 #endif
-	/* End accelerometer setup */
+}
 
-	/* Internal magnetometer setup
-	 * Set: ODR, PM, OM
-	 */
-
+/* Internal magnetometer setup
+ * Set: ODR, PM, OM
+ */
+void init_mag_i(void)
+{
 #ifdef INC_DEBUG_H_
 	printf("Initializing internal magnetometer\n");
 #endif
@@ -223,11 +205,13 @@ void init(void)
 	printf("Internal magnetometer control registers: 0x");
 	print_hex(mag_i_controls, sizeof(mag_i_controls));
 #endif
-	/* End internal magnetometer setup */
+}
 
-	/* External magnetometer setup
-	 * Set: FS, [PM, ODR], OM
-	 */
+/* External magnetometer setup
+ * Set: FS, [PM, ODR], OM
+ */
+void init_mag_e(void)
+{
 #ifdef INC_DEBUG_H_
 	printf("Initalizing external magnetometer\n");
 #endif
@@ -250,7 +234,25 @@ void init(void)
 	printf("External magnetometer control registers: 0x");
 	print_hex(mag_e_controls, sizeof(mag_e_controls));
 #endif
-	/* End external magnetometer setup */
+
+
+}
+
+void init_devices(void)
+{
+	printf("Program mode switch\n");
+
+
+	__disable_irq(); // the gyro DRDY messes with stuff if we don't do this
+
+	printf("START INIT\n");
+
+	init_gyro();
+	init_accel();
+	init_mag_i();
+	init_mag_e();
+
+	printf("END INIT\n");
 
 	__enable_irq();
 }
@@ -295,6 +297,7 @@ int32_t run_mag_e(void* data, uint32_t elapsed)
 {
 	int32_t ret;
 	ret = get_mag_e(&mag_e_ctx, (mag_field_t*) data);
+	toggle_led(BLUE);
 	return ret;
 }
 
@@ -314,6 +317,26 @@ int32_t print_quantities(void* unused, uint32_t elapsed)
 	}
 	return 0;
 }
+
+int32_t print_mag_e(void* data, uint32_t elapsed)
+{
+	printf("%3.2f,%3.2f,%3.2f\n", mag_e_field.x, mag_e_field.y, mag_e_field.z);
+	return 0;
+}
+
+bad_task_t debug_routines[] = {
+	{.task = run_accel, .data = &acceleration, .timer = &htim11, .period = 100U, .last = 0U},
+	{.task = run_gyro, .data = &angular_rate, .timer = &htim10, .period = 2500U, .last = 0U},
+	{.task = run_mag_i, .data = &mag_i_field, .timer = &htim11, .period = 100U, .last = 0U},
+	{.task = run_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U},
+	{.task = flash_leds, .data = NULL, .timer = &htim11, .period = 20000U, .last = 0U},
+	{.task = print_quantities, .data = NULL, .timer = &htim11, .period = 10U, .last = 0U},
+};
+
+bad_task_t mag_cal_routines[] = {
+	{.task = run_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U},
+	{.task = print_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U}
+};
 /* USER CODE END 0 */
 
 /**
@@ -355,16 +378,9 @@ int main(void)
   MX_TIM10_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-	init();
+	*(&program_mode) = INIT;
+	init_devices();
 	// declare tasks
-	bad_task_t routines[] = {
-		{.task = run_accel, .data = &acceleration, .timer = &htim11, .period = 10U, .last = 0U},
-		{.task = run_gyro, .data = &angular_rate, .timer = &htim10, .period = 2500U, .last = 0U},
-		{.task = run_mag_i, .data = &mag_i_field, .timer = &htim11, .period = 10U, .last = 0U},
-		{.task = run_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 7U, .last = 0U},
-		{.task = flash_leds, .data = NULL, .timer = &htim11, .period = 20000U, .last = 0U},
-		{.task = print_quantities, .data = NULL, .timer = &htim11, .period = 10U, .last = 0U},
-	};
 
   /* USER CODE END 2 */
 
@@ -377,9 +393,11 @@ int main(void)
 	{
 
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
-		RUN_TASKS(routines);
+		if (program_mode == MAGCAL)
+		{
+			RUN_TASKS(mag_cal_routines); // read and print
+		}
 	}
   /* USER CODE END 3 */
 }
@@ -432,16 +450,11 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	// should probably change this to make sure the pin is correct
-	int32_t ret;
-	uint16_t new_time;
-
-	new_time = __HAL_TIM_GET_COUNTER(&htim10);
-	ret = get_angular_rate_nocheck(&gyro_ctx, &angular_rate);
-	if (!ret)
-	{
-		last_gyro_time = new_time;
-	}
+	// TODO check which pin triggered the interrupt
+	printf("External GPIO interrupt from %hx\n", GPIO_Pin);
+	printf("Program mode change to MAGCAL\n");
+	printf("MAG HEADERS\nX,Y,Z\n");
+	*(&program_mode) = MAGCAL;
 }
 
 /* USER CODE END 4 */

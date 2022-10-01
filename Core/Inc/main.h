@@ -31,12 +31,12 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "debug.h"
-#include "sensors/accel.h"
-#include "sensors/gyro.h"
-#include "sensors/mag_i.h"
-#include "sensors/mag_e.h"
-#include "badsched.h"
+#include "../Devices/lsm303agr/accel.h"
+#include "../Devices/i3g4250d/gyro.h"
+#include "../Devices/lsm303agr/mag_i.h"
+#include "../Devices/lis3mdl/mag_e.h"
+#include "../Libraries/debug/debug.h"
+#include "../Libraries/sched/badsched.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -88,7 +88,6 @@ void Error_Handler(void);
 #define SWO_GPIO_Port GPIOB
 #define EXTI1_Pin GPIO_PIN_1
 #define EXTI1_GPIO_Port GPIOE
-#define EXTI1_EXTI_IRQn EXTI1_IRQn
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
