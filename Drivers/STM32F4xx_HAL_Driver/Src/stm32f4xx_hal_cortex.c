@@ -151,7 +151,7 @@ void HAL_NVIC_SetPriorityGrouping(uint32_t PriorityGroup)
   * @brief  Sets the priority of an interrupt.
   * @param  IRQn External interrupt number.
   *         This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @param  PreemptPriority The preemption priority for the IRQn channel.
   *         This parameter can be a value between 0 and 15
   *         A lower priority value indicates a higher priority 
@@ -179,7 +179,7 @@ void HAL_NVIC_SetPriority(IRQn_Type IRQn, uint32_t PreemptPriority, uint32_t Sub
   *         function should be called before. 
   * @param  IRQn External interrupt number.
   *         This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @retval None
   */
 void HAL_NVIC_EnableIRQ(IRQn_Type IRQn)
@@ -195,7 +195,7 @@ void HAL_NVIC_EnableIRQ(IRQn_Type IRQn)
   * @brief  Disables a device specific interrupt in the NVIC interrupt controller.
   * @param  IRQn External interrupt number.
   *         This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @retval None
   */
 void HAL_NVIC_DisableIRQ(IRQn_Type IRQn)
@@ -349,7 +349,7 @@ uint32_t HAL_NVIC_GetPriorityGrouping(void)
   * @brief  Gets the priority of an interrupt.
   * @param  IRQn External interrupt number.
   *         This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @param   PriorityGroup the priority grouping bits length.
   *         This parameter can be one of the following values:
   *           @arg NVIC_PRIORITYGROUP_0: 0 bits for preemption priority
@@ -378,7 +378,7 @@ void HAL_NVIC_GetPriority(IRQn_Type IRQn, uint32_t PriorityGroup, uint32_t *pPre
   * @brief  Sets Pending bit of an external interrupt.
   * @param  IRQn External interrupt number
   *         This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @retval None
   */
 void HAL_NVIC_SetPendingIRQ(IRQn_Type IRQn)
@@ -395,7 +395,7 @@ void HAL_NVIC_SetPendingIRQ(IRQn_Type IRQn)
   *         and returns the pending bit for the specified interrupt).
   * @param  IRQn External interrupt number.
   *          This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @retval status: - 0  Interrupt status is not pending.
   *                 - 1  Interrupt status is pending.
   */
@@ -412,7 +412,7 @@ uint32_t HAL_NVIC_GetPendingIRQ(IRQn_Type IRQn)
   * @brief  Clears the pending bit of an external interrupt.
   * @param  IRQn External interrupt number.
   *         This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @retval None
   */
 void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn)
@@ -428,7 +428,7 @@ void HAL_NVIC_ClearPendingIRQ(IRQn_Type IRQn)
   * @brief Gets active interrupt ( reads the active register in NVIC and returns the active bit).
   * @param IRQn External interrupt number
   *         This parameter can be an enumerator of IRQn_Type enumeration
-  *         (For the complete STM32 ../Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
+  *         (For the complete STM32 Devices IRQ Channels list, please refer to the appropriate CMSIS device file (stm32f4xxxx.h))
   * @retval status: - 0  Interrupt status is not pending.
   *                 - 1  Interrupt status is pending.
   */

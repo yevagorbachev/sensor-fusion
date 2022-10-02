@@ -5831,7 +5831,7 @@ typedef struct
   *
   * @param  __PLLI2SP__ specifies division factor for SPDIFRX Clock.
   *         This parameter must be a number in the range {2, 4, 6, or 8}.
-  * @note   the PLLI2SP parameter is only available with STM32F446xx ../Devices
+  * @note   the PLLI2SP parameter is only available with STM32F446xx Devices
   *                 
   * @param  __PLLI2SR__ specifies the division factor for I2S clock
   *         This parameter must be a number between Min_Data = 2 and Max_Data = 7.
@@ -5906,7 +5906,7 @@ typedef struct
   *         HAL_RCC_ClockConfig() API).
   * @param  __PLLI2SM__ specifies the division factor for PLLI2S VCO input clock
   *         This parameter must be a number between Min_Data = 2 and Max_Data = 63.
-  * @note   The PLLI2SM parameter is only used with STM32F411xE/STM32F410xx ../Devices
+  * @note   The PLLI2SM parameter is only used with STM32F411xE/STM32F410xx Devices
   * @note   You have to set the PLLI2SM parameter correctly to ensure that the VCO input
   *         frequency ranges from 1 to 2 MHz. It is recommended to select a frequency
   *         of 2 MHz to limit PLLI2S jitter.    
@@ -5936,7 +5936,7 @@ typedef struct
   * @param  __PLLI2SQ__ specifies the division factor for SAI1 clock.
   *         This parameter must be a number between Min_Data = 2 and Max_Data = 15. 
   * @note   the PLLI2SQ parameter is only available with STM32F427xx/437xx/429xx/439xx/469xx/479xx 
-  *         ../Devices and can be configured using the __HAL_RCC_PLLI2S_PLLSAICLK_CONFIG() macro
+  *         Devices and can be configured using the __HAL_RCC_PLLI2S_PLLSAICLK_CONFIG() macro
   * @param  __PLLI2SR__ specifies the division factor for I2S clock
   *         This parameter must be a number between Min_Data = 2 and Max_Data = 7.
   * @note   You have to set the PLLI2SR parameter correctly to not exceed 192 MHz
@@ -5951,7 +5951,7 @@ typedef struct
 /*------------------------------ PLLSAI Configuration ------------------------*/
 #if defined(STM32F427xx) || defined(STM32F437xx) || defined(STM32F429xx) || defined(STM32F439xx) || defined(STM32F446xx) || defined(STM32F469xx) || defined(STM32F479xx)
 /** @brief Macros to Enable or Disable the PLLISAI. 
-  * @note  The PLLSAI is only available with STM32F429x/439x ../Devices.
+  * @note  The PLLSAI is only available with STM32F429x/439x Devices.
   * @note  The PLLSAI is disabled by hardware when entering STOP and STANDBY modes. 
   */
 #define __HAL_RCC_PLLSAI_ENABLE() (*(__IO uint32_t *) RCC_CR_PLLSAION_BB = ENABLE)
@@ -5965,7 +5965,7 @@ typedef struct
   * @note   You have to set the PLLSAIM parameter correctly to ensure that the VCO input
   *         frequency ranges from 1 to 2 MHz. It is recommended to select a frequency
   *         of 1 MHz to limit PLLI2S jitter.
-  * @note   The PLLSAIM parameter is only used with STM32F446xx ../Devices
+  * @note   The PLLSAIM parameter is only used with STM32F446xx Devices
   *             
   * @param  __PLLSAIN__ specifies the multiplication factor for PLLSAI VCO output clock.
   *         This parameter must be a number between Min_Data = 50 and Max_Data = 432.
@@ -5974,14 +5974,14 @@ typedef struct
   *
   * @param  __PLLSAIP__ specifies division factor for OTG FS, SDIO and RNG clocks.
   *         This parameter must be a number in the range {2, 4, 6, or 8}.
-  * @note   the PLLSAIP parameter is only available with STM32F446xx ../Devices
+  * @note   the PLLSAIP parameter is only available with STM32F446xx Devices
   *                 
   * @param  __PLLSAIQ__ specifies the division factor for SAI clock
   *         This parameter must be a number between Min_Data = 2 and Max_Data = 15.
   *           
   * @param  __PLLSAIR__ specifies the division factor for LTDC clock
   *         This parameter must be a number between Min_Data = 2 and Max_Data = 7.
-  * @note   the PLLI2SR parameter is only available with STM32F427/437/429/439xx ../Devices  
+  * @note   the PLLI2SR parameter is only available with STM32F427/437/429/439xx Devices  
   */
 #define __HAL_RCC_PLLSAI_CONFIG(__PLLSAIM__, __PLLSAIN__, __PLLSAIP__, __PLLSAIQ__, __PLLSAIR__)     \
                                (RCC->PLLSAICFGR = ((__PLLSAIM__)                                   | \
@@ -6027,7 +6027,7 @@ typedef struct
   *           
   * @param  __PLLSAIR__ specifies the division factor for LTDC clock
   *         This parameter must be a number between Min_Data = 2 and Max_Data = 7.
-  * @note   the PLLI2SR parameter is only available with STM32F427/437/429/439xx ../Devices  
+  * @note   the PLLI2SR parameter is only available with STM32F427/437/429/439xx Devices  
   */
 #define __HAL_RCC_PLLSAI_CONFIG(__PLLSAIN__, __PLLSAIQ__, __PLLSAIR__)                                        \
                                (RCC->PLLSAICFGR = (((__PLLSAIN__) << RCC_PLLSAICFGR_PLLSAIN_Pos)  | \
@@ -6078,7 +6078,7 @@ typedef struct
 #if defined(STM32F427xx) || defined(STM32F437xx) || defined(STM32F429xx) || defined(STM32F439xx) || defined(STM32F469xx) || defined(STM32F479xx)
 /** @brief  Macro to configure the LTDC clock Divider coming from PLLSAI.
   * 
-  * @note   The LTDC peripheral is only available with STM32F427/437/429/439/469/479xx ../Devices.
+  * @note   The LTDC peripheral is only available with STM32F427/437/429/439/469/479xx Devices.
   * @note   This function must be called before enabling the PLLSAI. 
   * @param  __PLLSAIDivR__ specifies the PLLSAI division factor for LTDC clock .
   *          This parameter must be a number between Min_Data = 2 and Max_Data = 16.
@@ -6116,7 +6116,7 @@ typedef struct
 #if defined(STM32F427xx) || defined(STM32F437xx) || defined(STM32F429xx) || defined(STM32F439xx) || defined(STM32F469xx) || defined(STM32F479xx)
                                  
 /** @brief  Macro to configure SAI1BlockA clock source selection.
-  * @note   The SAI peripheral is only available with STM32F427/437/429/439/469/479xx ../Devices.      
+  * @note   The SAI peripheral is only available with STM32F427/437/429/439/469/479xx Devices.      
   * @note   This function must be called before enabling PLLSAI, PLLI2S and  
   *         the SAI clock.
   * @param  __SOURCE__ specifies the SAI Block A clock source.
@@ -6131,7 +6131,7 @@ typedef struct
 #define __HAL_RCC_SAI_BLOCKACLKSOURCE_CONFIG(__SOURCE__) (MODIFY_REG(RCC->DCKCFGR, RCC_DCKCFGR_SAI1ASRC, (__SOURCE__)))
 
 /** @brief  Macro to configure SAI1BlockB clock source selection.
-  * @note   The SAI peripheral is only available with STM32F427/437/429/439/469/479xx ../Devices.
+  * @note   The SAI peripheral is only available with STM32F427/437/429/439/469/479xx Devices.
   * @note   This function must be called before enabling PLLSAI, PLLI2S and  
   *         the SAI clock.
   * @param  __SOURCE__ specifies the SAI Block B clock source.
@@ -6148,7 +6148,7 @@ typedef struct
 
 #if defined(STM32F446xx)
 /** @brief  Macro to configure SAI1 clock source selection.
-  * @note   This configuration is only available with STM32F446xx ../Devices.
+  * @note   This configuration is only available with STM32F446xx Devices.
   * @note   This function must be called before enabling PLL, PLLSAI, PLLI2S and  
   *         the SAI clock.
   * @param  __SOURCE__ specifies the SAI1 clock source.
@@ -6161,7 +6161,7 @@ typedef struct
 #define __HAL_RCC_SAI1_CONFIG(__SOURCE__) (MODIFY_REG(RCC->DCKCFGR, RCC_DCKCFGR_SAI1SRC, (__SOURCE__)))
 
 /** @brief  Macro to Get SAI1 clock source selection.
-  * @note   This configuration is only available with STM32F446xx ../Devices.      
+  * @note   This configuration is only available with STM32F446xx Devices.      
   * @retval The clock source can be one of the following values:
   *            @arg RCC_SAI1CLKSOURCE_PLLI2S: PLLI2S_Q clock divided by PLLI2SDIVQ used as SAI1 clock. 
   *            @arg RCC_SAI1CLKSOURCE_PLLSAI: PLLISAI_Q clock divided by PLLSAIDIVQ used as SAI1 clock.
@@ -6171,7 +6171,7 @@ typedef struct
 #define __HAL_RCC_GET_SAI1_SOURCE() (READ_BIT(RCC->DCKCFGR, RCC_DCKCFGR_SAI1SRC))
 
 /** @brief  Macro to configure SAI2 clock source selection.
-  * @note   This configuration is only available with STM32F446xx ../Devices.      
+  * @note   This configuration is only available with STM32F446xx Devices.      
   * @note   This function must be called before enabling PLL, PLLSAI, PLLI2S and  
   *         the SAI clock.
   * @param  __SOURCE__ specifies the SAI2 clock source.
@@ -6184,7 +6184,7 @@ typedef struct
 #define __HAL_RCC_SAI2_CONFIG(__SOURCE__) (MODIFY_REG(RCC->DCKCFGR, RCC_DCKCFGR_SAI2SRC, (__SOURCE__)))
 
 /** @brief  Macro to Get SAI2 clock source selection.
-  * @note   This configuration is only available with STM32F446xx ../Devices.      
+  * @note   This configuration is only available with STM32F446xx Devices.      
   * @retval The clock source can be one of the following values:
   *            @arg RCC_SAI2CLKSOURCE_PLLI2S: PLLI2S_Q clock divided by PLLI2SDIVQ used as SAI2 clock. 
   *            @arg RCC_SAI2CLKSOURCE_PLLSAI: PLLISAI_Q clock divided by PLLSAIDIVQ used as SAI2 clock.
@@ -6380,7 +6380,7 @@ typedef struct
 
 /** @brief  Macro to configure DFSDM1 Audio clock source selection.
   * @note   This configuration is only available with STM32F412Zx/STM32F412Vx/STM32F412Rx/STM32F412Cx/
-            STM32F413xx/STM32F423xx ../Devices.
+            STM32F413xx/STM32F423xx Devices.
   * @param  __SOURCE__ specifies the DFSDM1 Audio clock source.
   *         This parameter can be one of the following values:
   *            @arg RCC_DFSDM1AUDIOCLKSOURCE_I2S1: CK_I2S_PCLK1 selected as audio clock
@@ -6390,7 +6390,7 @@ typedef struct
 
 /** @brief  Macro to Get DFSDM1 Audio clock source selection.
   * @note   This configuration is only available with STM32F412Zx/STM32F412Vx/STM32F412Rx/STM32F412Cx/
-            STM32F413xx/STM32F423xx ../Devices.
+            STM32F413xx/STM32F423xx Devices.
   * @retval The clock source can be one of the following values:
   *            @arg RCC_DFSDM1AUDIOCLKSOURCE_I2S1: CK_I2S_PCLK1 selected as audio clock
   *            @arg RCC_DFSDM1AUDIOCLKSOURCE_I2S2: CK_I2S_PCLK2 selected as audio clock
@@ -6415,7 +6415,7 @@ typedef struct
 #define __HAL_RCC_GET_DFSDM2_SOURCE() ((uint32_t)(READ_BIT(RCC->DCKCFGR, RCC_DCKCFGR_CKDFSDM1SEL)))
 
 /** @brief  Macro to configure DFSDM1 Audio clock source selection.
-  * @note   This configuration is only available with STM32F413xx/STM32F423xx ../Devices.
+  * @note   This configuration is only available with STM32F413xx/STM32F423xx Devices.
   * @param  __SOURCE__ specifies the DFSDM2 Audio clock source.
   *         This parameter can be one of the following values:
   *            @arg RCC_DFSDM2AUDIOCLKSOURCE_I2S1: CK_I2S_PCLK1 selected as audio clock
@@ -6424,7 +6424,7 @@ typedef struct
 #define __HAL_RCC_DFSDM2AUDIO_CONFIG(__SOURCE__) (MODIFY_REG(RCC->DCKCFGR, RCC_DCKCFGR_CKDFSDM2ASEL, (__SOURCE__)))
 
 /** @brief  Macro to Get DFSDM2 Audio clock source selection.
-  * @note   This configuration is only available with STM32F413xx/STM32F423xx ../Devices.
+  * @note   This configuration is only available with STM32F413xx/STM32F423xx Devices.
   * @retval The clock source can be one of the following values:
   *            @arg RCC_DFSDM2AUDIOCLKSOURCE_I2S1: CK_I2S_PCLK1 selected as audio clock
   *            @arg RCC_DFSDM2AUDIOCLKSOURCE_I2S2: CK_I2S_PCLK2 selected as audio clock
@@ -6432,7 +6432,7 @@ typedef struct
 #define __HAL_RCC_GET_DFSDM2AUDIO_SOURCE() (READ_BIT(RCC->DCKCFGR, RCC_DCKCFGR_CKDFSDM2ASEL))
       
 /** @brief  Macro to configure SAI1BlockA clock source selection.
-  * @note   The SAI peripheral is only available with STM32F413xx/STM32F423xx ../Devices.      
+  * @note   The SAI peripheral is only available with STM32F413xx/STM32F423xx Devices.      
   * @note   This function must be called before enabling PLLSAI, PLLI2S and  
   *         the SAI clock.
   * @param  __SOURCE__ specifies the SAI Block A clock source.
@@ -6445,7 +6445,7 @@ typedef struct
 #define __HAL_RCC_SAI_BLOCKACLKSOURCE_CONFIG(__SOURCE__) (MODIFY_REG(RCC->DCKCFGR, RCC_DCKCFGR_SAI1ASRC, (__SOURCE__)))
       
 /** @brief  Macro to Get SAI1 BlockA clock source selection.
-  * @note   This configuration is only available with STM32F413xx/STM32F423xx ../Devices.      
+  * @note   This configuration is only available with STM32F413xx/STM32F423xx Devices.      
   * @retval The clock source can be one of the following values:
   *            @arg RCC_SAIACLKSOURCE_PLLI2SR: PLLI2S_R clock divided (R2) used as SAI1 Block A clock.
   *            @arg RCC_SAIACLKSOURCE_EXT: External clock mapped on the I2S_CKIN pinused as SAI1 Block A clock.
@@ -6455,7 +6455,7 @@ typedef struct
 #define __HAL_RCC_GET_SAI_BLOCKA_SOURCE() (READ_BIT(RCC->DCKCFGR, RCC_DCKCFGR_SAI1ASRC))
 
 /** @brief  Macro to configure SAI1 BlockB clock source selection.
-  * @note   The SAI peripheral is only available with STM32F413xx/STM32F423xx ../Devices.
+  * @note   The SAI peripheral is only available with STM32F413xx/STM32F423xx Devices.
   * @note   This function must be called before enabling PLLSAI, PLLI2S and  
   *         the SAI clock.
   * @param  __SOURCE__ specifies the SAI Block B clock source.
@@ -6468,7 +6468,7 @@ typedef struct
 #define __HAL_RCC_SAI_BLOCKBCLKSOURCE_CONFIG(__SOURCE__) (MODIFY_REG(RCC->DCKCFGR, RCC_DCKCFGR_SAI1BSRC, (__SOURCE__)))
       
 /** @brief  Macro to Get SAI1 BlockB clock source selection.
-  * @note   This configuration is only available with STM32F413xx/STM32F423xx ../Devices.      
+  * @note   This configuration is only available with STM32F413xx/STM32F423xx Devices.      
   * @retval The clock source can be one of the following values:
   *            @arg RCC_SAIBCLKSOURCE_PLLI2SR: PLLI2S_R clock divided (R2) used as SAI1 Block A clock.
   *            @arg RCC_SAIBCLKSOURCE_EXT: External clock mapped on the I2S_CKIN pin used as SAI1 Block A clock.
@@ -6655,7 +6655,7 @@ typedef struct
     defined(STM32F479xx) || defined(STM32F412Zx) || defined(STM32F412Vx) || defined(STM32F412Rx) ||\
     defined(STM32F412Cx) || defined(STM32F413xx) || defined(STM32F423xx)
 /** @brief  Macro to configure the Timers clocks prescalers 
-  * @note   This feature is only available with STM32F429x/439x ../Devices.  
+  * @note   This feature is only available with STM32F429x/439x Devices.  
   * @param  __PRESC__  specifies the Timers clocks prescalers selection
   *         This parameter can be one of the following values:
   *            @arg RCC_TIMPRES_DESACTIVATED: The Timers kernels clocks prescaler is 

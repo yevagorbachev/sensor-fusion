@@ -102,7 +102,7 @@
           is in power down mode, an additional startup delay is incurred when 
           waking up from Stop mode.
           
-           (+) For STM32F42xxx/43xxx/446xx/469xx/479xx ../Devices, the scale can be modified only when the PLL 
+           (+) For STM32F42xxx/43xxx/446xx/469xx/479xx Devices, the scale can be modified only when the PLL 
            is OFF and the HSI or HSE clock source is selected as system clock. 
            The new value programmed is active only when the PLL is ON.
            When the PLL is OFF, the voltage scale 3 is automatically selected. 
@@ -111,7 +111,7 @@
     *** Over-Drive and Under-Drive configuration ****
     =================================================
     [..]         
-       (+) For STM32F42xxx/43xxx/446xx/469xx/479xx ../Devices, in Run mode: the main regulator has
+       (+) For STM32F42xxx/43xxx/446xx/469xx/479xx Devices, in Run mode: the main regulator has
            2 operating modes available:
         (++) Normal mode: The CPU and core logic operate at maximum frequency at a given 
              voltage scaling (scale 1, scale 2 or scale 3)
@@ -121,7 +121,7 @@
             disabled by HAL_PWREx_DisableOverDrive() function, to enter or exit from Over-drive mode please follow 
             the sequence described in Reference manual.
              
-       (+) For STM32F42xxx/43xxx/446xx/469xx/479xx ../Devices, in Stop mode: the main regulator or low power regulator 
+       (+) For STM32F42xxx/43xxx/446xx/469xx/479xx Devices, in Stop mode: the main regulator or low power regulator 
            supplies a low power voltage to the 1.2V domain, thus preserving the content of registers 
            and internal SRAM. 2 operating modes are available:
          (++) Normal mode: the 1.2V domain is preserved in nominal leakage mode. This mode is only 

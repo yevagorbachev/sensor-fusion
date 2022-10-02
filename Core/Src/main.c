@@ -36,7 +36,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include<stdarg.h>
+// #include<stdarg.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +53,11 @@ typedef enum
 typedef enum
 {
 	INIT,
+	IDLE,
+	BTN,
+	GYROCAL,
 	MAGCAL,
+	CONTROL,
 } program_mode_t;
 
 /* USER CODE END PTD */
@@ -62,8 +66,8 @@ typedef enum
 /* USER CODE BEGIN PD */
 
 #define HCLK_kHz 96000
-#define TIM10_DIVIDER_MS HCLK_kHz / TIM10_PRESCALER
-#define TIM11_DIVIDER_MS HCLK_kHz / TIM11_PRESCALER
+#define TIM10_DIVIDER_MS HCLK_kHz / TIM10_PRESCALER // counts per ms
+#define TIM11_DIVIDER_MS HCLK_kHz / TIM11_PRESCALER // counts per ms
 
 /* USER CODE END PD */
 
@@ -75,7 +79,8 @@ typedef enum
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-program_mode_t program_mode;
+program_mode_t program_mode = INIT;
+uint16_t button_time = 0;
 
 // control structures
 stmdev_ctx_t accel_ctx;
@@ -83,13 +88,28 @@ stmdev_ctx_t gyro_ctx;
 stmdev_ctx_t mag_i_ctx;
 stmdev_ctx_t mag_e_ctx;
 
-// data locations
+// calibration information
+angular_rate_t i3g4250d_bias;
+
+
+// raw data locations
 angular_rate_t angular_rate;
-uint16_t last_gyro_time;
 accel_t acceleration;
 mag_field_t mag_i_field;
 mag_field_t mag_e_field;
 
+
+// might want to store the time of the last measurement, as well
+
+// led variables
+// so we can have a task use a pointer to one of these 4 LEDs in its data argument
+// instead of making 4 tasks to use each LED
+led_t orange_led_value = ORANGE;
+led_t green_led_value = GREEN;
+led_t blue_led_value = BLUE;
+led_t red_led_value = RED;
+
+// controls.c controls.h
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -100,6 +120,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
 // wrapping HAL function for brevity
 void toggle_led(led_t led)
 {
@@ -112,6 +133,13 @@ void set_led(led_t led)
 void reset_led(led_t led)
 {
 	HAL_GPIO_WritePin(GPIOD, led, GPIO_PIN_RESET);
+}
+void reset_all_led()
+{
+	HAL_GPIO_WritePin(GPIOD, RED, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOD, BLUE, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOD, GREEN, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOD, ORANGE, GPIO_PIN_RESET);
 }
 
 // overrides syscall _write so we can use SWV
@@ -133,6 +161,7 @@ void init_gyro(void)
 #ifdef INC_DEBUG_H_
 	printf("Initializing gyro\n");
 #endif
+
 	init_gyro_ctx(&gyro_ctx, &hspi1);
 
 	uint8_t gyro_controls[] = {0x07U, 0, 0, 0, 0}; // control register defaults
@@ -240,103 +269,67 @@ void init_mag_e(void)
 
 void init_devices(void)
 {
-	printf("Program mode switch\n");
-
+	printf("Testing mode confirmation\n");
 
 	__disable_irq(); // the gyro DRDY messes with stuff if we don't do this
-
-	printf("START INIT\n");
 
 	init_gyro();
 	init_accel();
 	init_mag_i();
 	init_mag_e();
 
-	printf("END INIT\n");
-
 	__enable_irq();
 }
 
-int32_t flash_leds(void* unused, uint32_t elapsed)
+int32_t toggle_led_task(void* led, uint32_t elapsed)
 {
-	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
-	{
-		toggle_led(BLUE);
-		set_led(GREEN);
-	}
-	else
-	{
-		reset_led(BLUE);
-		toggle_led(GREEN);
-	}
+	toggle_led(*((led_t*) led));
 	return 0;
 }
 
-int32_t run_accel(void* data, uint32_t elapsed)
+int32_t mag_print(void* data, uint32_t elapsed)
 {
-	int32_t ret;
-	ret = get_accel(&accel_ctx, (accel_t*) data);
+	int32_t ret = get_mag_e(&mag_e_ctx, data);
+	mag_field_t* field = (mag_field_t*) data;
+	printf("%f,%f,%f\n", field->x, field->y, field->z);
 	return ret;
 }
+//int32_t mag_print(void* angular_rate, uint32_t elapsed)
+//{
+//	int32_t ret = 0;
+//
+//}
+//	{.task = function, .data = void*, .timer = handle, .period = number, .last = 0U},
 
-int32_t run_gyro(void* data, uint32_t elapsed)
-{
-	int32_t ret;
-	ret = get_angular_rate(&gyro_ctx, (angular_rate_t*) data);
-	return ret;
-}
-
-int32_t run_mag_i(void* data, uint32_t elapsed)
-{
-	int32_t ret;
-	ret = get_mag_i(&mag_i_ctx, (mag_field_t*) data);
-	return ret;
-}
-
-int32_t run_mag_e(void* data, uint32_t elapsed)
-{
-	int32_t ret;
-	ret = get_mag_e(&mag_e_ctx, (mag_field_t*) data);
-	toggle_led(BLUE);
-	return ret;
-}
-
-int32_t print_quantities(void* unused, uint32_t elapsed)
-{
-	if (1) // (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
-	{
-		printf("#GRN#Data output:\n");
-		printf("Linear acceleration: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
-				acceleration.x, acceleration.y, acceleration.z, acceleration.unit);
-		printf("Angular rate: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
-				angular_rate.x, angular_rate.y, angular_rate.z, angular_rate.unit);
-		printf("Internal mag reading: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
-				mag_i_field.x, mag_i_field.y, mag_i_field.z, mag_i_field.unit);
-		printf("External mag reading: X %3.2f, Y %3.2f, Z %3.2f [%s]\n",
-				mag_e_field.x, mag_e_field.y, mag_e_field.z, mag_e_field.unit);
-	}
-	return 0;
-}
-
-int32_t print_mag_e(void* data, uint32_t elapsed)
-{
-	printf("%3.2f,%3.2f,%3.2f\n", mag_e_field.x, mag_e_field.y, mag_e_field.z);
-	return 0;
-}
-
-bad_task_t debug_routines[] = {
-	{.task = run_accel, .data = &acceleration, .timer = &htim11, .period = 100U, .last = 0U},
-	{.task = run_gyro, .data = &angular_rate, .timer = &htim10, .period = 2500U, .last = 0U},
-	{.task = run_mag_i, .data = &mag_i_field, .timer = &htim11, .period = 100U, .last = 0U},
-	{.task = run_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U},
-	{.task = flash_leds, .data = NULL, .timer = &htim11, .period = 20000U, .last = 0U},
-	{.task = print_quantities, .data = NULL, .timer = &htim11, .period = 10U, .last = 0U},
+// just flash while idle
+bad_task_t idle_routines[] = {
+	{.task = toggle_led_task, .data = &orange_led_value, .timer = &htim11, .period = 2500U, .last = 0U},
 };
 
-bad_task_t mag_cal_routines[] = {
-	{.task = run_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U},
-	{.task = print_mag_e, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U}
+// delay for one second, store and print the rolling average over two seconds of measurement
+bad_task_t gyrocal_routines[] = {
+	{.task = toggle_led_task, .data = &green_led_value, .timer = &htim11, .period = 1000U, .last = 0U},
 };
+
+// delay for one second, print out 10 seconds of measurements
+bad_task_t magcal_routines[] = {
+	{.task = mag_print, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U},
+	{.task = toggle_led_task, .data = &blue_led_value, .timer = &htim11, .period = 1000U, .last = 0U},
+};
+
+bad_task_t btn_routines[] = {
+	{.task = toggle_led_task, .data = &red_led_value, .timer = &htim11, .period = 2500U, .last = 0U},
+};
+
+bad_task_t control_routines[] = {
+	// take measurements - put them in global variables
+	// filter measurements - put the result in global variables
+	// calculate control output - use the filtered measurements, calculate PWM duty
+	// execute watchdogs
+	// if watchdogs are successful - send control output
+	{.task = toggle_led_task, .data = &orange_led_value, .timer = &htim11, .period = 500U, .last = 0U},
+};
+
 /* USER CODE END 0 */
 
 /**
@@ -347,6 +340,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
+  program_mode = INIT;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -378,9 +372,7 @@ int main(void)
   MX_TIM10_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-	*(&program_mode) = INIT;
-	init_devices();
-	// declare tasks
+  init_devices();
 
   /* USER CODE END 2 */
 
@@ -389,14 +381,35 @@ int main(void)
 	// start timers
 	HAL_TIM_Base_Start(&htim10);
 	HAL_TIM_Base_Start(&htim11);
+
+	program_mode = IDLE;
 	while (1)
 	{
 
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
-		if (program_mode == MAGCAL)
+		switch(program_mode)
 		{
-			RUN_TASKS(mag_cal_routines); // read and print
+			case(IDLE):
+				RUN_TASKS(idle_routines);
+				break;
+			case(GYROCAL):
+				RUN_TASKS(gyrocal_routines);
+				break;
+			case(MAGCAL):
+				RUN_TASKS(magcal_routines);
+				break;
+			case(CONTROL):
+				RUN_TASKS(control_routines);
+				break;
+			case(BTN):
+				RUN_TASKS(btn_routines);
+				break;
+			default:
+				RUN_TASKS(idle_routines);
+//				printf("Invalid program mode\n");
+				break;
 		}
 	}
   /* USER CODE END 3 */
@@ -448,15 +461,51 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+
+void handle_button(void)
 {
-	// TODO check which pin triggered the interrupt
-	printf("External GPIO interrupt from %hx\n", GPIO_Pin);
-	printf("Program mode change to MAGCAL\n");
-	printf("MAG HEADERS\nX,Y,Z\n");
-	*(&program_mode) = MAGCAL;
+	GPIO_PinState button_state = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+	if (button_state == GPIO_PIN_SET && program_mode == IDLE)
+	{
+		program_mode = BTN;
+		button_time = __HAL_TIM_GET_COUNTER(&htim11);
+	}
+	else if (button_state == GPIO_PIN_RESET && program_mode == BTN)
+	{
+		uint16_t elapsed = __HAL_TIM_GET_COUNTER(&htim11) - button_time;
+		int ct_per_sec = 1000 * TIM11_DIVIDER_MS;
+		printf("%3.2fs elapsed, ", ((float_t) elapsed) / 10000.0f);
+		if (elapsed < ct_per_sec)
+		{
+			printf("Mode change to GYROCAL\n");
+			program_mode = GYROCAL;
+		}
+		else if (elapsed < 3 * ct_per_sec)
+		{
+			printf("Mode change to MAGCAL\n");
+			program_mode = MAGCAL;
+		}
+		else
+		{
+			printf("Mode change to CONTROL\n");
+			program_mode = CONTROL;
+		}
+	}
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	printf("EXTI %ux\n", GPIO_Pin);
+	switch(GPIO_Pin)
+	{
+		case(1):
+			handle_button();
+			break;
+		default:
+			printf("Pin %ux ISR not defined\n", GPIO_Pin);
+			break;
+	}
+}
 /* USER CODE END 4 */
 
 /**

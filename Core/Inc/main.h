@@ -72,6 +72,9 @@ void Error_Handler(void);
 #define PH0_OSC_IN_GPIO_Port GPIOH
 #define PH1_OSC_OUT_Pin GPIO_PIN_1
 #define PH1_OSC_OUT_GPIO_Port GPIOH
+#define EXTI0_Pin GPIO_PIN_0
+#define EXTI0_GPIO_Port GPIOA
+#define EXTI0_EXTI_IRQn EXTI0_IRQn
 #define LD4_Pin GPIO_PIN_12
 #define LD4_GPIO_Port GPIOD
 #define LD3_Pin GPIO_PIN_13
