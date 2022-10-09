@@ -13,6 +13,7 @@ RM := rm -rf
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
 -include Core/Libraries/sched/subdir.mk
+-include Core/Libraries/filter/subdir.mk
 -include Core/Libraries/debug/subdir.mk
 -include Core/Devices/lsm303agr/subdir.mk
 -include Core/Devices/lis3mdl/subdir.mk

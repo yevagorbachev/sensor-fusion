@@ -9,6 +9,7 @@
 #define INC_SENSORS_DATATYPES_H_
 
 #include <math.h> // for float_t
+#include <stdint.h>
 
 typedef struct {
 	float_t x;
@@ -32,6 +33,10 @@ typedef struct {
 	float_t z;
 	char* unit;
 } mag_field_t;
+
+typedef struct {
+	float_t matrix[3][3];
+} soft_iron_t;
 
 typedef float_t motor_output_t;
 

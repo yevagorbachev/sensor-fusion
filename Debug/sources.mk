@@ -25,6 +25,7 @@ Core/Devices/i3g4250d \
 Core/Devices/lis3mdl \
 Core/Devices/lsm303agr \
 Core/Libraries/debug \
+Core/Libraries/filter \
 Core/Libraries/sched \
 Core/Src \
 Core/Startup \

@@ -32,16 +32,20 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+extern TIM_HandleTypeDef htim5;
+
 extern TIM_HandleTypeDef htim10;
 
 extern TIM_HandleTypeDef htim11;
 
 /* USER CODE BEGIN Private defines */
-#define TIM10_PRESCALER 96
-#define TIM11_PRESCALER 9600
+#define TIM5_PRESCALER 4800U
+#define TIM10_PRESCALER 96U
+#define TIM11_PRESCALER 9600U
 
 /* USER CODE END Private defines */
 
+void MX_TIM5_Init(void);
 void MX_TIM10_Init(void);
 void MX_TIM11_Init(void);
 

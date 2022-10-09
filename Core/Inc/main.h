@@ -37,6 +37,7 @@ extern "C" {
 #include "../Devices/lis3mdl/mag_e.h"
 #include "../Libraries/debug/debug.h"
 #include "../Libraries/sched/badsched.h"
+#include "../Libraries/filter/filter.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

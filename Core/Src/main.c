@@ -36,7 +36,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-// #include<stdarg.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,9 +65,12 @@ typedef enum
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define HCLK_kHz 96000
-#define TIM10_DIVIDER_MS HCLK_kHz / TIM10_PRESCALER // counts per ms
-#define TIM11_DIVIDER_MS HCLK_kHz / TIM11_PRESCALER // counts per ms
+#define	UPDATE_ROLLING_MEAN(mean, new, n) mean = (mean * n + new) / (n + 1)
+#define HCLK_kHz 96000U
+#define APB1_kHz 48000U
+#define TIM5_RATE_kHz (APB1_kHz / TIM5_PRESCALER) // counts per ms
+#define TIM10_RATE_kHz (HCLK_kHz / TIM10_PRESCALER) // counts per ms
+#define TIM11_RATE_kHz (HCLK_kHz / TIM11_PRESCALER) // counts per ms
 
 /* USER CODE END PD */
 
@@ -81,6 +84,8 @@ typedef enum
 /* USER CODE BEGIN PV */
 program_mode_t program_mode = INIT;
 uint16_t button_time = 0;
+uint32_t gyrocal_time;
+uint32_t magcal_time;
 
 // control structures
 stmdev_ctx_t accel_ctx;
@@ -88,18 +93,7 @@ stmdev_ctx_t gyro_ctx;
 stmdev_ctx_t mag_i_ctx;
 stmdev_ctx_t mag_e_ctx;
 
-// calibration information
-angular_rate_t i3g4250d_bias;
-
-
-// raw data locations
-angular_rate_t angular_rate;
-accel_t acceleration;
-mag_field_t mag_i_field;
-mag_field_t mag_e_field;
-
-
-// might want to store the time of the last measurement, as well
+#include "state.h"
 
 // led variables
 // so we can have a task use a pointer to one of these 4 LEDs in its data argument
@@ -109,7 +103,6 @@ led_t green_led_value = GREEN;
 led_t blue_led_value = BLUE;
 led_t red_led_value = RED;
 
-// controls.c controls.h
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -275,7 +268,7 @@ void init_devices(void)
 
 	init_gyro();
 	init_accel();
-	init_mag_i();
+//	init_mag_i();
 	init_mag_e();
 
 	__enable_irq();
@@ -289,31 +282,100 @@ int32_t toggle_led_task(void* led, uint32_t elapsed)
 
 int32_t mag_print(void* data, uint32_t elapsed)
 {
+	// exit after 30s
+	if ((__HAL_TIM_GET_COUNTER(&htim5) - magcal_time) > 30U * 1000U * TIM5_RATE_kHz)
+	{
+		program_mode = IDLE;
+		reset_led(BLUE);
+#ifdef INC_DEBUG_H_
+		printf("Finished magnetometer calibration\n");
+#endif
+	}
 	int32_t ret = get_mag_e(&mag_e_ctx, data);
 	mag_field_t* field = (mag_field_t*) data;
 	printf("%f,%f,%f\n", field->x, field->y, field->z);
 	return ret;
 }
-//int32_t mag_print(void* angular_rate, uint32_t elapsed)
-//{
-//	int32_t ret = 0;
-//
-//}
-//	{.task = function, .data = void*, .timer = handle, .period = number, .last = 0U},
+
+int32_t add_gyro_measurement(void* unused, uint32_t elapsed)
+{
+	// exit after 3s
+	if ((__HAL_TIM_GET_COUNTER(&htim5) - gyrocal_time) > 3U * 1000U * TIM5_RATE_kHz)
+	{
+		program_mode = IDLE;
+		reset_led(GREEN);
+#ifdef INC_DEBUG_H_
+		printf("Gyroscope offset: %3.2f, %3.2f, %3.2f, [dps]\n",
+				angular_rate_bias.x, angular_rate_bias.y, angular_rate_bias.z);
+#endif
+		return 0;
+	}
+
+	int32_t ret = get_angular_rate(&gyro_ctx, &angular_rate_raw);
+	if (ret == 0)
+	{
+#ifdef INC_DEBUG_H_
+		printf("Raw anglar rate: %3.2f, %3.2f, %3.2f, [dps]\n",
+				angular_rate_raw.x, angular_rate_raw.y, angular_rate_raw.z);
+#endif
+		UPDATE_ROLLING_MEAN(angular_rate_bias.x, angular_rate_raw.x, angular_rate_bias_n);
+		UPDATE_ROLLING_MEAN(angular_rate_bias.y, angular_rate_raw.y, angular_rate_bias_n);
+		UPDATE_ROLLING_MEAN(angular_rate_bias.z, angular_rate_raw.z, angular_rate_bias_n);
+		angular_rate_bias_n++;
+	}
+	return ret;
+}
+
+int32_t measure_angular_rate(void* unused, uint32_t elapsed)
+{
+	int32_t ret = get_angular_rate(&gyro_ctx, &angular_rate_raw);
+	if (ret == 0)
+	{
+		angular_rate = apply_gyro_cal(angular_rate_raw, angular_rate_bias);
+		angular_rate_time = __HAL_TIM_GET_COUNTER(&htim5);
+	}
+	return ret;
+}
+
+int32_t print_mag_field(void* data, uint32_t elapsed)
+{
+	printf("%f,%f,%f\n", mag_field.x, mag_field.y, mag_field.z);
+	return 0;
+}
+
+int32_t measure_mag_field(void* unused, uint32_t elapsed)
+{
+	int32_t ret = get_mag_e(&mag_e_ctx, &mag_field_raw);
+	if (ret == 0)
+	{
+		mag_field = apply_mag_cal(mag_field_raw, mag_hard_bias, mag_soft_bias);
+		mag_field_time = __HAL_TIM_GET_COUNTER(&htim5);
+	}
+	return ret;
+}
+
+int32_t print_tim5(void* unused, uint32_t elapsed)
+{
+	uint32_t time = __HAL_TIM_GET_COUNTER(&htim5);
+	printf("Elapsed time: %lu ms\n", time / TIM5_RATE_kHz);
+	return 0;
+}
 
 // just flash while idle
 bad_task_t idle_routines[] = {
 	{.task = toggle_led_task, .data = &orange_led_value, .timer = &htim11, .period = 2500U, .last = 0U},
+	{.task = print_tim5, .data = NULL, .timer = &htim5, .period = 10000U, .last = 0U},
 };
 
 // delay for one second, store and print the rolling average over two seconds of measurement
 bad_task_t gyrocal_routines[] = {
+	{.task = add_gyro_measurement, .data = NULL, .timer = &htim11, .period = 25U, .last = 0U},
 	{.task = toggle_led_task, .data = &green_led_value, .timer = &htim11, .period = 1000U, .last = 0U},
 };
 
 // delay for one second, print out 10 seconds of measurements
 bad_task_t magcal_routines[] = {
-	{.task = mag_print, .data = &mag_e_field, .timer = &htim11, .period = 70U, .last = 0U},
+	{.task = mag_print, .data = &mag_field_raw, .timer = &htim11, .period = 70U, .last = 0U},
 	{.task = toggle_led_task, .data = &blue_led_value, .timer = &htim11, .period = 1000U, .last = 0U},
 };
 
@@ -322,11 +384,9 @@ bad_task_t btn_routines[] = {
 };
 
 bad_task_t control_routines[] = {
-	// take measurements - put them in global variables
-	// filter measurements - put the result in global variables
-	// calculate control output - use the filtered measurements, calculate PWM duty
-	// execute watchdogs
-	// if watchdogs are successful - send control output
+	{.task = measure_mag_field, .data = NULL, .timer = &htim11, .period = 70U, .last = 0U},
+	{.task = measure_angular_rate, .data = NULL, .timer = &htim11, .period = 25U, .last = 0U},
+	{.task = print_mag_field, .data = NULL, .timer = &htim5, .period = 500U, .last = 0U},
 	{.task = toggle_led_task, .data = &orange_led_value, .timer = &htim11, .period = 500U, .last = 0U},
 };
 
@@ -350,12 +410,6 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
-	// output symbols
-	acceleration.unit = "m/s^2";
-	angular_rate.unit = "deg/s";
-	mag_i_field.unit = "gauss";
-	mag_e_field.unit = "gauss";
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -371,7 +425,9 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM10_Init();
   MX_TIM11_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
+
   init_devices();
 
   /* USER CODE END 2 */
@@ -379,8 +435,10 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	// start timers
+	HAL_TIM_Base_Start(&htim5);
 	HAL_TIM_Base_Start(&htim10);
 	HAL_TIM_Base_Start(&htim11);
+
 
 	program_mode = IDLE;
 	while (1)
@@ -473,17 +531,19 @@ void handle_button(void)
 	else if (button_state == GPIO_PIN_RESET && program_mode == BTN)
 	{
 		uint16_t elapsed = __HAL_TIM_GET_COUNTER(&htim11) - button_time;
-		int ct_per_sec = 1000 * TIM11_DIVIDER_MS;
+		int ct_per_sec = 1000 * TIM11_RATE_kHz;
 		printf("%3.2fs elapsed, ", ((float_t) elapsed) / 10000.0f);
 		if (elapsed < ct_per_sec)
 		{
 			printf("Mode change to GYROCAL\n");
 			program_mode = GYROCAL;
+			gyrocal_time = __HAL_TIM_GET_COUNTER(&htim5);
 		}
 		else if (elapsed < 3 * ct_per_sec)
 		{
 			printf("Mode change to MAGCAL\n");
 			program_mode = MAGCAL;
+			magcal_time = __HAL_TIM_GET_COUNTER(&htim5);
 		}
 		else
 		{
@@ -495,14 +555,14 @@ void handle_button(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	printf("EXTI %ux\n", GPIO_Pin);
+	printf("EXTI %u\n", GPIO_Pin);
 	switch(GPIO_Pin)
 	{
 		case(1):
 			handle_button();
 			break;
 		default:
-			printf("Pin %ux ISR not defined\n", GPIO_Pin);
+			printf("Pin %u ISR not defined\n", GPIO_Pin);
 			break;
 	}
 }
