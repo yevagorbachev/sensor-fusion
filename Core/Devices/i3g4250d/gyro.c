@@ -7,7 +7,7 @@
 
 #include "gyro.h"
 
-void init_gyro_ctx(stmdev_ctx_t* ctx, SPI_HandleTypeDef* handle)
+void init_gyro_ctx(stmdev_ctx_t* ctx, void* handle)
 {
 	ctx->handle = handle;
 	ctx->read_reg = (stmdev_read_ptr) gyro_read;
@@ -42,8 +42,7 @@ int32_t gyro_read(void* handle, uint8_t reg, uint8_t* buf, uint16_t len)
 // converts angular rate from digits to degrees per second
 void convert_angular_rate(int16_t* buf, angular_rate_t* output)
 {
-	// UPDATE FACTOR AND COMMENT IF FULL-SCALE CONFIG CHANGES
-	float_t factor = I3G4250D_FS500_FACTOR / 1000.0f; // FS 500 DPS -> DPS
+	float_t factor = I3G4250D_FACTOR / 1000.0f; // LSB -> mDPS -> DPS
 	output->x = buf[0] * factor;
 	output->y = buf[1] * factor;
 	output->z = buf[2] * factor;
@@ -52,7 +51,6 @@ void convert_angular_rate(int16_t* buf, angular_rate_t* output)
 /** Checks status reg, puts angular rate to output (does conversion) if there is data on all axes
  * Returns 0 for success, -1 for no new data, 1-3 for HAL_StatusTypeDef
  */
-
 int32_t get_angular_rate(stmdev_ctx_t* ctx, angular_rate_t* output)
 {
 	int16_t buf[3];
@@ -60,27 +58,24 @@ int32_t get_angular_rate(stmdev_ctx_t* ctx, angular_rate_t* output)
 	i3g4250d_status_reg_t status;
 
 	ret = i3g4250d_status_reg_get(ctx, &status);
+
+	if (ret)
+	{
+		return ret; // failed to read status register
+	}
+	if (!status.zyxda)
+	{
+		return -1; // no data ready
+	}
+	ret = i3g4250d_angular_rate_raw_get(ctx, buf);
 	if (ret)
 	{
 		return ret;
 	}
-	else if (status.zyxda)
-	{
-		ret = i3g4250d_angular_rate_raw_get(ctx, buf);
-		if (ret)
-		{
-			return ret;
-		}
-		else
-		{
-			convert_angular_rate(buf, output);
-			return 0;
-		}
-	}
-	else
-	{
-		return -1;
-	}
+
+
+	convert_angular_rate(buf, output);
+	return 0;
 }
 
 /** Puts contents of angular rate registers to output - does not check zyxda
@@ -96,9 +91,7 @@ int32_t get_angular_rate_nocheck(stmdev_ctx_t* ctx, angular_rate_t* output)
 	{
 		return ret;
 	}
-	else
-	{
-		convert_angular_rate(buf, output);
-		return 0;
-	}
+
+	convert_angular_rate(buf, output);
+	return 0;
 }

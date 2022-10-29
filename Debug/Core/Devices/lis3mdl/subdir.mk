@@ -6,15 +6,15 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../Core/Devices/lis3mdl/lis3mdl_reg.c \
-../Core/Devices/lis3mdl/mag_e.c 
+../Core/Devices/lis3mdl/mag.c 
 
 OBJS += \
 ./Core/Devices/lis3mdl/lis3mdl_reg.o \
-./Core/Devices/lis3mdl/mag_e.o 
+./Core/Devices/lis3mdl/mag.o 
 
 C_DEPS += \
 ./Core/Devices/lis3mdl/lis3mdl_reg.d \
-./Core/Devices/lis3mdl/mag_e.d 
+./Core/Devices/lis3mdl/mag.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -24,7 +24,7 @@ Core/Devices/lis3mdl/%.o Core/Devices/lis3mdl/%.su: ../Core/Devices/lis3mdl/%.c 
 clean: clean-Core-2f-Devices-2f-lis3mdl
 
 clean-Core-2f-Devices-2f-lis3mdl:
-	-$(RM) ./Core/Devices/lis3mdl/lis3mdl_reg.d ./Core/Devices/lis3mdl/lis3mdl_reg.o ./Core/Devices/lis3mdl/lis3mdl_reg.su ./Core/Devices/lis3mdl/mag_e.d ./Core/Devices/lis3mdl/mag_e.o ./Core/Devices/lis3mdl/mag_e.su
+	-$(RM) ./Core/Devices/lis3mdl/lis3mdl_reg.d ./Core/Devices/lis3mdl/lis3mdl_reg.o ./Core/Devices/lis3mdl/lis3mdl_reg.su ./Core/Devices/lis3mdl/mag.d ./Core/Devices/lis3mdl/mag.o ./Core/Devices/lis3mdl/mag.su
 
 .PHONY: clean-Core-2f-Devices-2f-lis3mdl
 

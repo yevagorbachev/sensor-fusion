@@ -12,14 +12,26 @@
 #include "../datatypes.h"
 #include "stm32f4xx_hal.h"
 
-#define GYRO_SCALE I3G4250D_500dps
-// factors in mdps/digit
-#define I3G4250D_FS245_FACTOR 8.75f // can vary 7.4 to 10.1
-#define I3G4250D_FS500_FACTOR 17.5f // can vary 14.8 to 19.8
-#define I3G4250D_FS2000_FACTOR 70f // can vary 59.2 to 79.3
+#define GYRO_FS_dps 500 // 245, 500, 2000
+#define I3G4250D_ODR I3G4250D_ODR_400Hz
 #define I3G4250D_TIMEOUT 10
 
-void init_gyro_ctx(stmdev_ctx_t* ctx, SPI_HandleTypeDef* handle);
+#if GYRO_FS_dps == 245
+#define I3G4250D_FS I3G4250D_245dps
+#define I3G4250D_FACTOR 8.75f // can vary 7.4 to 10.1
+#elif GYRO_FS_dps == 500
+#define I3G4250D_FS I3G4250D_500dps
+#define I3G4250D_FACTOR 17.5f // can vary 14.8 to 19.8
+#elif GYRO_FS_dps == 2000
+#define I3G4250D_FS I3G4250D_2000dps
+#define I3G4250D_FACTOR 70f // can vary 59.2 to 79.3
+#else
+#error Invalid gyroscope full-scale
+#endif
+
+// factors in mdps/digit
+
+void init_gyro_ctx(stmdev_ctx_t* ctx, void* handle);
 int32_t gyro_read(void* handle, uint8_t reg, uint8_t* buf, uint16_t len);
 int32_t gyro_write(void* handle, uint8_t reg, uint8_t* buf, uint16_t len);
 

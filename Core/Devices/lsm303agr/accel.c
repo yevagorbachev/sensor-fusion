@@ -30,24 +30,20 @@ int32_t get_accel(stmdev_ctx_t* ctx, accel_t* output)
 	{
 		return ret;
 	}
-	else if (status.zyxda)
-	{
-		ret = lsm303agr_acceleration_raw_get(ctx, buf);
-		if (ret)
-		{
-			return ret;
-		}
-		else
-		{
-			float_t factor = 9.807f / 1000.0f; // miligee to m/s^2
-			output->x = lsm303agr_from_fs_2g_hr_to_mg(buf[0]) * factor;
-			output->y = lsm303agr_from_fs_2g_hr_to_mg(buf[1]) * factor;
-			output->z = lsm303agr_from_fs_2g_hr_to_mg(buf[2]) * factor;
-			return 0;
-		}
-	}
-	else
+	if (!status.zyxda)
 	{
 		return -1;
 	}
+
+	ret = lsm303agr_acceleration_raw_get(ctx, buf);
+	if (ret)
+	{
+		return ret;
+	}
+
+	float_t factor = 9.807f / 1000.0f; // miligee to m/s^2
+	output->x = lsm303agr_from_fs_2g_hr_to_mg(buf[0]) * factor;
+	output->y = lsm303agr_from_fs_2g_hr_to_mg(buf[1]) * factor;
+	output->z = lsm303agr_from_fs_2g_hr_to_mg(buf[2]) * factor;
+	return 0;
 }

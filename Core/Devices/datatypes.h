@@ -35,6 +35,14 @@ typedef struct {
 } mag_field_t;
 
 typedef struct {
+	mag_field_t* values;
+	int32_t size;
+	int32_t position;
+} mag_ringbuf_t;
+
+#define MAG_RINGBUF(vals) {.values = vals, .size = sizeof(vals) / sizeof(mag_field_t), .position = 0}
+
+typedef struct {
 	float_t matrix[3][3];
 } soft_iron_t;
 

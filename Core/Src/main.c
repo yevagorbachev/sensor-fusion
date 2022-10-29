@@ -91,7 +91,7 @@ uint32_t magcal_time;
 stmdev_ctx_t accel_ctx;
 stmdev_ctx_t gyro_ctx;
 stmdev_ctx_t mag_i_ctx;
-stmdev_ctx_t mag_e_ctx;
+stmdev_ctx_t mag_ctx;
 
 #include "state.h"
 
@@ -161,7 +161,7 @@ void init_gyro(void)
 	i3g4250d_write_reg(&gyro_ctx, I3G4250D_CTRL_REG1, gyro_controls, sizeof(gyro_controls));
 
 	i3g4250d_data_rate_set(&gyro_ctx, I3G4250D_ODR_400Hz);
-	i3g4250d_full_scale_set(&gyro_ctx, GYRO_SCALE);
+	i3g4250d_full_scale_set(&gyro_ctx, I3G4250D_FS);
 	i3g4250d_int2_route_t gyro_int2_cfg = {.i2_empty = 0, .i2_orun = 0, .i2_wtm = 0, .i2_drdy = 0};
 	i3g4250d_pin_int2_route_set(&gyro_ctx, gyro_int2_cfg);
 
@@ -201,75 +201,16 @@ void init_accel(void)
 #endif
 }
 
-/* Internal magnetometer setup
- * Set: ODR, PM, OM
- */
-void init_mag_i(void)
-{
-#ifdef INC_DEBUG_H_
-	printf("Initializing internal magnetometer\n");
-#endif
-	init_mag_i_ctx(&mag_i_ctx, &hi2c1);
-
-	// default values from datasheet
-	uint8_t mag_i_controls[] = {0x03U, 0, 0};
-	lsm303agr_write_reg(&mag_i_ctx, LSM303AGR_CFG_REG_A_M,
-			mag_i_controls, sizeof(mag_i_controls));
-
-	lsm303agr_mag_data_rate_set(&mag_i_ctx, LSM303AGR_MG_ODR_100Hz);
-	lsm303agr_mag_power_mode_set(&mag_i_ctx, LSM303AGR_HIGH_RESOLUTION);
-	lsm303agr_mag_operating_mode_set(&mag_i_ctx, LSM303AGR_CONTINUOUS_MODE);
-
-	lsm303agr_read_reg(&mag_i_ctx, LSM303AGR_CFG_REG_A_M,
-			mag_i_controls, sizeof(mag_i_controls));
-
-#ifdef INC_DEBUG_H_
-	printf("Internal magnetometer control registers: 0x");
-	print_hex(mag_i_controls, sizeof(mag_i_controls));
-#endif
-}
-
-/* External magnetometer setup
- * Set: FS, [PM, ODR], OM
- */
-void init_mag_e(void)
-{
-#ifdef INC_DEBUG_H_
-	printf("Initalizing external magnetometer\n");
-#endif
-	init_mag_e_ctx(&mag_e_ctx, &hi2c1);
-
-	// initalize registers to default values from datasheet;
-	uint8_t mag_e_controls[] = {0x10U, 0, 0x03U, 0, 0};
-	lis3mdl_write_reg(&mag_e_ctx, LIS3MDL_CTRL_REG1,
-			mag_e_controls, sizeof(mag_e_controls));
-
-	lis3mdl_full_scale_set(&mag_e_ctx, MAG_E_SCALE);
-	lis3mdl_data_rate_set(&mag_e_ctx, LIS3MDL_UHP_155Hz);
-	lis3mdl_operating_mode_set(&mag_e_ctx, LIS3MDL_CONTINUOUS_MODE);
-
-
-	lis3mdl_read_reg(&mag_e_ctx, LIS3MDL_CTRL_REG1,
-			mag_e_controls, sizeof(mag_e_controls));
-
-#ifdef INC_DEBUG_H_
-	printf("External magnetometer control registers: 0x");
-	print_hex(mag_e_controls, sizeof(mag_e_controls));
-#endif
-
-
-}
-
 void init_devices(void)
 {
-	printf("Testing mode confirmation\n");
+	printf("Testing API\n");
 
 	__disable_irq(); // the gyro DRDY messes with stuff if we don't do this
 
 	init_gyro();
-	init_accel();
-//	init_mag_i();
-	init_mag_e();
+//	init_accel();
+	init_mag_ctx(&mag_ctx, &hi2c1);
+	init_mag(&mag_ctx);
 
 	__enable_irq();
 }
@@ -291,7 +232,7 @@ int32_t mag_print(void* data, uint32_t elapsed)
 		printf("Finished magnetometer calibration\n");
 #endif
 	}
-	int32_t ret = get_mag_e(&mag_e_ctx, data);
+	int32_t ret = get_mag(&mag_ctx, data);
 	mag_field_t* field = (mag_field_t*) data;
 	printf("%f,%f,%f\n", field->x, field->y, field->z);
 	return ret;
@@ -339,19 +280,40 @@ int32_t measure_angular_rate(void* unused, uint32_t elapsed)
 
 int32_t print_mag_field(void* data, uint32_t elapsed)
 {
-	printf("%f,%f,%f\n", mag_field.x, mag_field.y, mag_field.z);
 	return 0;
 }
 
 int32_t measure_mag_field(void* unused, uint32_t elapsed)
 {
-	int32_t ret = get_mag_e(&mag_e_ctx, &mag_field_raw);
+	int32_t ret = get_mag(&mag_ctx, &mag_field_raw);
 	if (ret == 0)
 	{
 		mag_field = apply_mag_cal(mag_field_raw, mag_hard_bias, mag_soft_bias);
 		mag_field_time = __HAL_TIM_GET_COUNTER(&htim5);
 	}
 	return ret;
+}
+
+int32_t put_smooth_mag_field(void* data, uint32_t elapsed)
+{
+	int32_t ret = get_mag(&mag_ctx, &mag_field_raw);
+	if (ret)
+	{
+		return ret;
+	}
+
+	mag_field = apply_mag_cal(mag_field_raw, mag_hard_bias, mag_soft_bias);
+	put_mag(&mag_ringbuf, mag_field);
+	return 0;
+}
+
+int32_t print_smooth_mag_field(void* data, uint32_t elapsed)
+{
+	mag_field_t field = get_smooth_mag(&mag_ringbuf);
+	// printf("Raw: %f,%f,%f\t", mag_field_raw.x, mag_field_raw.y, mag_field_raw.z);
+	printf("Smooth: %f,%f,%f\t", field.x, field.y, field.z);
+	printf("Heading: %3.2f deg\n", get_heading(field));
+	return 0;
 }
 
 int32_t print_tim5(void* unused, uint32_t elapsed)
@@ -384,9 +346,11 @@ bad_task_t btn_routines[] = {
 };
 
 bad_task_t control_routines[] = {
-	{.task = measure_mag_field, .data = NULL, .timer = &htim11, .period = 70U, .last = 0U},
-	{.task = measure_angular_rate, .data = NULL, .timer = &htim11, .period = 25U, .last = 0U},
-	{.task = print_mag_field, .data = NULL, .timer = &htim5, .period = 500U, .last = 0U},
+//	{.task = measure_mag_field, .data = NULL, .timer = &htim11, .period = 70U, .last = 0U},
+//	{.task = measure_angular_rate, .data = NULL, .timer = &htim11, .period = 25U, .last = 0U},
+	{.task = put_smooth_mag_field, .data = NULL, .timer = &htim5, .period = 70U, .last = 0U},
+//	{.task = print_mag_field, .data = NULL, .timer = &htim5, .period = 1000U, .last = 0U},
+	{.task = print_smooth_mag_field, .data = NULL, .timer = &htim5, .period = 500U, .last = 0U},
 	{.task = toggle_led_task, .data = &orange_led_value, .timer = &htim11, .period = 500U, .last = 0U},
 };
 
@@ -526,13 +490,13 @@ void handle_button(void)
 	if (button_state == GPIO_PIN_SET && program_mode == IDLE)
 	{
 		program_mode = BTN;
-		button_time = __HAL_TIM_GET_COUNTER(&htim11);
+		button_time = __HAL_TIM_GET_COUNTER(&htim5);
 	}
 	else if (button_state == GPIO_PIN_RESET && program_mode == BTN)
 	{
-		uint16_t elapsed = __HAL_TIM_GET_COUNTER(&htim11) - button_time;
-		int ct_per_sec = 1000 * TIM11_RATE_kHz;
-		printf("%3.2fs elapsed, ", ((float_t) elapsed) / 10000.0f);
+		uint16_t elapsed = __HAL_TIM_GET_COUNTER(&htim5) - button_time;
+		int ct_per_sec = 1000 * TIM5_RATE_kHz;
+		printf("%3.2fs elapsed, ", ((float_t) elapsed) / ct_per_sec);
 		if (elapsed < ct_per_sec)
 		{
 			printf("Mode change to GYROCAL\n");

@@ -24,6 +24,7 @@ extern mag_field_t mag_field_raw;
 // calibrated data
 extern angular_rate_t angular_rate;
 extern mag_field_t mag_field;
+extern mag_ringbuf_t mag_ringbuf;
 extern uint32_t angular_rate_time; // time of last angular rate measurement
 extern uint32_t mag_field_time; // time of last mag field measurement
 

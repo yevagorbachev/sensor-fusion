@@ -33,8 +33,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "../Devices/lsm303agr/accel.h"
 #include "../Devices/i3g4250d/gyro.h"
-#include "../Devices/lsm303agr/mag_i.h"
-#include "../Devices/lis3mdl/mag_e.h"
+#include "../Devices/lis3mdl/mag.h"
 #include "../Libraries/debug/debug.h"
 #include "../Libraries/sched/badsched.h"
 #include "../Libraries/filter/filter.h"
