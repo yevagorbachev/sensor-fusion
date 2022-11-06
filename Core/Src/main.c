@@ -135,8 +135,7 @@ void reset_all_led()
 	HAL_GPIO_WritePin(GPIOD, ORANGE, GPIO_PIN_RESET);
 }
 
-// overrides syscall _write so we can use SWV
-
+// overrides syscall _write so we can use serial wire output (stlink)
 int _write(int file, char* ptr, int len)
 {
 	for (int i = 0; i < len; i++)
@@ -288,7 +287,7 @@ int32_t measure_mag_field(void* unused, uint32_t elapsed)
 	int32_t ret = get_mag(&mag_ctx, &mag_field_raw);
 	if (ret == 0)
 	{
-		mag_field = apply_mag_cal(mag_field_raw, mag_hard_bias, mag_soft_bias);
+		mag_field = apply_mag_cal(mag_field_raw, mag_hard_bias);
 		mag_field_time = __HAL_TIM_GET_COUNTER(&htim5);
 	}
 	return ret;
@@ -302,7 +301,7 @@ int32_t put_smooth_mag_field(void* data, uint32_t elapsed)
 		return ret;
 	}
 
-	mag_field = apply_mag_cal(mag_field_raw, mag_hard_bias, mag_soft_bias);
+	mag_field = apply_mag_cal(mag_field_raw, mag_hard_bias);
 	put_mag(&mag_ringbuf, mag_field);
 	return 0;
 }
@@ -337,7 +336,7 @@ bad_task_t gyrocal_routines[] = {
 
 // delay for one second, print out 10 seconds of measurements
 bad_task_t magcal_routines[] = {
-	{.task = mag_print, .data = &mag_field_raw, .timer = &htim11, .period = 70U, .last = 0U},
+	{.task = mag_print, .data = &mag_field_raw, .timer = &htim11, .period = 70u, .last = 0u},
 	{.task = toggle_led_task, .data = &blue_led_value, .timer = &htim11, .period = 1000U, .last = 0U},
 };
 

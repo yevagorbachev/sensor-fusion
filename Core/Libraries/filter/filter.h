@@ -11,7 +11,7 @@
 
 #include "../../Devices/datatypes.h"
 
-mag_field_t apply_mag_cal(mag_field_t raw, mag_field_t hard_offset, soft_iron_t soft_offset);
+mag_field_t apply_mag_cal(mag_field_t raw, mag_field_t hard_offset);
 angular_rate_t apply_gyro_cal(angular_rate_t raw, angular_rate_t bias);
 
 

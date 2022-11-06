@@ -42,10 +42,6 @@ typedef struct {
 
 #define MAG_RINGBUF(vals) {.values = vals, .size = sizeof(vals) / sizeof(mag_field_t), .position = 0}
 
-typedef struct {
-	float_t matrix[3][3];
-} soft_iron_t;
-
 typedef float_t motor_output_t;
 
 #endif /* INC_SENSORS_DATATYPES_H_ */

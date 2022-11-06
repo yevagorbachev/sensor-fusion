@@ -7,7 +7,7 @@
 
 #include "filter.h"
 
-mag_field_t apply_mag_cal(mag_field_t raw, mag_field_t hard_offset, soft_iron_t soft_offset)
+mag_field_t apply_mag_cal(mag_field_t raw, mag_field_t hard_offset)
 {
 	mag_field_t calibrated = {
 		.x = raw.x - hard_offset.x,

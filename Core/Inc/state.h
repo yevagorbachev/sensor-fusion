@@ -14,7 +14,6 @@
 extern angular_rate_t angular_rate_bias;
 extern uint32_t angular_rate_bias_n;
 extern mag_field_t mag_hard_bias;
-extern soft_iron_t mag_soft_bias;
 
 // raw data
 extern angular_rate_t angular_rate_raw;
